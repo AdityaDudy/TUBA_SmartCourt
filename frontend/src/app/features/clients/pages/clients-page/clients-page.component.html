@@ -1,0 +1,641 @@
+<div class="page" id="clients-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-users"></i> Clients</h1>
+      <p class="pg-sub">{{ filtered.length }} clients registered</p>
+    </div>
+    <div class="pg-actions">
+      <div class="search-wrap"><i class="fas fa-search"></i>
+        <input type="text" placeholder="Search clients…" [value]="search()" (input)="search.set($any($event.target).value)">
+      </div>
+      <button class="btn-primary" (click)="openAddForm()"><i class="fas fa-user-plus"></i> Add Client</button>
+    </div>
+  </div>
+  <div class="filter-tabs">
+    @for (f of filters(); track f) { <button class="ftab" [class.active]="filter() === f" (click)="filter.set(f)">{{ f }}</button> }
+  </div>
+  <div class="clients-grid">
+    @for (c of paginated; track c.id) {
+      <div class="client-card">
+        <div class="cc-top">
+          <div class="cc-av" [style.background]="c.gradient || 'linear-gradient(135deg, var(--g1), var(--g2))'">{{ c.initials || (c.name ? c.name.substring(0,2).toUpperCase() : 'CL') }}</div>
+          <div>
+            <div class="cc-name">{{ c.name }}</div>
+            <div class="cc-type">{{ c.type }}</div>
+          </div>
+          <span class="badge b-g" style="margin-left:auto">{{ c.status }}</span>
+        </div>
+        <div class="cc-info">
+          <div><i class="fas fa-envelope"></i> {{ c.email }}</div>
+          <div><i class="fas fa-phone"></i> {{ c.mobile }}</div>
+        </div>
+        <div class="cc-footer">
+          <span>{{ getActiveMattersCount(c.id) }} active matters</span>
+          <button class="btn-xs" (click)="openViewModal(c)">View</button>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state-full"><i class="fas fa-users"></i><p>No clients found.</p></div>
+    }
+  </div>
+
+  @if (totalPages > 1) {
+    <div class="pagination" style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; font-size: 13px; color: var(--txt3);">
+      <button class="btn-xs" style="padding: 6px 12px;" [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)"><i class="fas fa-chevron-left"></i> Prev</button>
+      <span style="font-weight: 700; color: var(--txt);">Page {{ currentPage() }} of {{ totalPages }}</span>
+      <button class="btn-xs" style="padding: 6px 12px;" [disabled]="currentPage() === totalPages" (click)="currentPage.set(currentPage() + 1)">Next <i class="fas fa-chevron-right"></i></button>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="showForm.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-user-plus"></i> Add New Client</h3>
+          <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Name *</label>
+              <input type="text" placeholder="Client Name" maxlength="100" [value]="form().name || ''" (input)="form.update(f => ({...f, name: $any($event.target).value}))" [class.input-error]="submitted() && !isNameValid">
+              @if (submitted() && !isNameValid) {
+                <span class="error-msg">Name is required (min 2 characters)</span>
+              }
+            </div>
+            <div class="fg"><label>Type</label>
+              <select [value]="form().type" (change)="form.update(f => ({...f, type: $any($event.target).value}))">
+                @for (t of types(); track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Email</label>
+              <input type="email" placeholder="client@example.com" maxlength="100" [value]="form().email || ''" (input)="form.update(f => ({...f, email: $any($event.target).value}))" [class.input-error]="submitted() && !isEmailValid">
+              @if (submitted() && !isEmailValid) {
+                <span class="error-msg">Please enter a valid email address</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Mobile</label>
+              <input type="text" placeholder="e.g. +91 9999999999" maxlength="15" [value]="form().mobile || ''" (input)="form.update(f => ({...f, mobile: $any($event.target).value}))" [class.input-error]="submitted() && !isMobileValid">
+              @if (submitted() && !isMobileValid) {
+                <span class="error-msg">Enter a valid mobile (8-15 digits)</span>
+              }
+            </div>
+            <div class="fg fg-full">
+              <label>Address</label>
+              <input type="text" placeholder="Billing Address" maxlength="250" [value]="form().address || ''" (input)="form.update(f => ({...f, address: $any($event.target).value}))">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+          <button class="btn-primary" (click)="save()" [disabled]="submitted() && !isFormValid"><i class="fas fa-save"></i> Save Client</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: View Client Details (Refactored to full Client Profile) -->
+  @if (showViewModal() && selectedClient(); as client) {
+    <div class="modal-overlay" (click)="showViewModal.set(false)">
+      <div class="modal" style="max-width: 750px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="cc-av" [style.background]="client.gradient || 'linear-gradient(135deg, var(--g1), var(--g2))'" style="width: 48px; height: 48px; font-size: 16px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: white;">
+              {{ client.initials || (client.name ? client.name.substring(0,2).toUpperCase() : 'CL') }}
+            </div>
+            <div>
+              <h3 style="font-size: 16px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+                {{ client.displayName || client.name }}
+                <span class="badge b-g" style="font-size: 10px; padding: 2px 6px;">{{ client.type }}</span>
+              </h3>
+              <p style="font-size: 12px; color: var(--txt3); margin: 2px 0 0 0;">Client Code: {{ client.code }}</p>
+            </div>
+          </div>
+          <button class="modal-close" (click)="showViewModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Tab Navigation Bar -->
+        <div style="display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); padding: 0 16px;">
+          <button class="ftab" style="padding: 12px 16px; font-size: 13px; font-weight: 600;" [class.active]="activeProfileTab() === 'overview'" (click)="activeProfileTab.set('overview')">
+            <i class="fas fa-info-circle" style="margin-right: 6px;"></i> Overview
+          </button>
+          @if (client.type.toLowerCase() !== 'individual') {
+            <button class="ftab" style="padding: 12px 16px; font-size: 13px; font-weight: 600;" [class.active]="activeProfileTab() === 'corporate'" (click)="activeProfileTab.set('corporate')">
+              <i class="fas fa-building" style="margin-right: 6px;"></i> Corporate Details
+            </button>
+          }
+          <button class="ftab" style="padding: 12px 16px; font-size: 13px; font-weight: 600;" [class.active]="activeProfileTab() === 'documents'" (click)="activeProfileTab.set('documents')">
+            <i class="fas fa-file-alt" style="margin-right: 6px;"></i> Documents ({{ clientDocuments().length }})
+          </button>
+          <button class="ftab" style="padding: 12px 16px; font-size: 13px; font-weight: 600;" [class.active]="activeProfileTab() === 'compliance'" (click)="activeProfileTab.set('compliance')">
+            <i class="fas fa-clipboard-check" style="margin-right: 6px;"></i> Compliance Check
+          </button>
+          <button class="ftab" style="padding: 12px 16px; font-size: 13px; font-weight: 600;" [class.active]="activeProfileTab() === 'finance'" (click)="activeProfileTab.set('finance')">
+            <i class="fas fa-wallet" style="margin-right: 6px;"></i> Finance
+          </button>
+        </div>
+
+        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+          
+          <!-- TAB: Overview -->
+          @if (activeProfileTab() === 'overview') {
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <!-- Contact Details -->
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 10px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Contact Information</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div><strong style="color: var(--txt);">Email:</strong> <span style="color: var(--txt3);">{{ client.email || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Primary Mobile:</strong> <span style="color: var(--txt3);">{{ client.mobile || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Alternate Mobile:</strong> <span style="color: var(--txt3);">{{ client.alternateMobile || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Correspondence Address:</strong> <span style="color: var(--txt3);">{{ client.address || '—' }}</span></div>
+                  <div style="grid-column: span 2;"><strong style="color: var(--txt);">Billing Address:</strong> <span style="color: var(--txt3);">{{ client.billingAddress || 'Same as correspondence' }}</span></div>
+                </div>
+              </div>
+
+              <!-- Individual Details (Only displayed if type is Individual) -->
+              @if (client.type.toLowerCase() === 'individual') {
+                <div>
+                  <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 10px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Personal Information</h4>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                    <div><strong style="color: var(--txt);">Date of Birth:</strong> <span style="color: var(--txt3);">{{ client.dob || '—' }}</span></div>
+                    <div><strong style="color: var(--txt);">Gender:</strong> <span style="color: var(--txt3);">{{ client.gender || '—' }}</span></div>
+                    <div><strong style="color: var(--txt);">Father's / Husband's Name:</strong> <span style="color: var(--txt3);">{{ client.fatherSpouseName || '—' }}</span></div>
+                  </div>
+                </div>
+              }
+
+              <!-- Legal & Relationship Details -->
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 10px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Compliance & Relationship</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div><strong style="color: var(--txt);">PAN Number:</strong> <span style="color: var(--txt3);">{{ client.pan || '—' }}</span></div>
+                  @if (client.type.toLowerCase() === 'individual') {
+                    <div><strong style="color: var(--txt);">Aadhaar Card:</strong> <span style="color: var(--txt3);">{{ client.aadhar || '—' }}</span></div>
+                  } @else {
+                    <div><strong style="color: var(--txt);">GSTIN Number:</strong> <span style="color: var(--txt3);">{{ client.gstin || client.gst || '—' }}</span></div>
+                  }
+                  <div><strong style="color: var(--txt);">ID Proof Type / Number:</strong> <span style="color: var(--txt3);">{{ client.idProofType ? (client.idProofType + ' : ' + (client.idProofNumber || '—')) : '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Assigned Advocate:</strong> <span style="color: var(--txt3);">{{ client.assignedAdvocate || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Referral Source:</strong> <span style="color: var(--txt3);">{{ client.referralSource || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Client Since:</strong> <span style="color: var(--txt3);">{{ client.clientSince || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Created By:</strong> <span style="color: var(--txt3);">{{ client.createdBy || 'System' }}</span></div>
+                  <div><strong style="color: var(--txt);">Vakalatnama on File:</strong> <span class="badge" [class.b-g]="client.vakalatnamaOnFile" [class.b-r]="!client.vakalatnamaOnFile">{{ client.vakalatnamaOnFile ? 'Yes' : 'No' }}</span></div>
+                  <div><strong style="color: var(--txt);">Engagement Letter Signed:</strong> <span class="badge" [class.b-g]="client.engagementLetterSigned" [class.b-r]="!client.engagementLetterSigned">{{ client.engagementLetterSigned ? 'Yes' : 'No' }}</span></div>
+                  <div><strong style="color: var(--txt);">Data Consent Flags:</strong> <span class="badge" [class.b-g]="client.dataConsent" [class.b-r]="!client.dataConsent">{{ client.dataConsent ? 'Granted' : 'Missing' }}</span></div>
+                  <div style="grid-column: span 2;"><strong style="color: var(--txt);">Conflict Notes:</strong> <span style="color: var(--txt3);">{{ client.conflictNotes || 'None' }}</span></div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- TAB: Corporate Details -->
+          @if (activeProfileTab() === 'corporate' && client.type.toLowerCase() !== 'individual') {
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 10px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Registration details</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div><strong style="color: var(--txt);">CIN/LLPIN:</strong> <span style="color: var(--txt3);">{{ client.cin || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Incorporation Date:</strong> <span style="color: var(--txt3);">{{ client.incorporationDate || '—' }}</span></div>
+                  <div style="grid-column: span 2;"><strong style="color: var(--txt);">Registered Office Address:</strong> <span style="color: var(--txt3);">{{ client.registeredOfficeAddress || '—' }}</span></div>
+                </div>
+              </div>
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 10px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Authorized Signatory</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div><strong style="color: var(--txt);">Signatory Name:</strong> <span style="color: var(--txt3);">{{ client.authorizedSignatoryName || '—' }}</span></div>
+                  <div><strong style="color: var(--txt);">Signatory Designation:</strong> <span style="color: var(--txt3);">{{ client.authorizedSignatoryDesignation || '—' }}</span></div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- TAB: Documents -->
+          @if (activeProfileTab() === 'documents') {
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Client Files (Onboarding / KYC)</h4>
+                <div>
+                  <input type="file" #clientFile (change)="onClientFileUpload(client.id, $event)" style="display:none">
+                  <button class="btn-xs btn-primary" (click)="clientFile.click()"><i class="fas fa-upload"></i> Upload File</button>
+                </div>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                @for (doc of clientDocuments(); track doc.id) {
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg2); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer;" (click)="openDocPreview(doc)">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <i class="fas" [class]="doc.icon || 'fa-file-alt'" style="font-size: 16px; color: var(--primary);"></i>
+                      <div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--txt); text-decoration: underline;">{{ doc.name }}</div>
+                        <div style="font-size: 11px; color: var(--txt3);">Type: {{ doc.type || 'General document' }} · Uploaded: {{ doc.date }}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <span class="badge b-g">{{ doc.source }}</span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div style="text-align: center; padding: 30px; color: var(--txt3); border: 1px dashed var(--border); border-radius: 8px; font-size: 13px;">
+                    <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 8px; display: block; color: var(--border);"></i>
+                    No client-level documents uploaded yet. Upload Vakalatnamas, engagement agreements, or ID proof documents here.
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- TAB: Compliance Check -->
+          @if (activeProfileTab() === 'compliance') {
+            <div>
+              <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 0 0 16px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Document Verification & KYC Check</h4>
+              
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                @for (item of complianceChecklist; track item.name) {
+                  <div style="display: flex; align-items: flex-start; gap: 12px; background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <i class="fas" [class.fa-check-circle]="item.status === 'Passed'" [class.fa-exclamation-triangle]="item.status === 'Missing'" 
+                       [style.color]="item.status === 'Passed' ? 'var(--g1)' : 'var(--red)'" style="font-size: 18px; margin-top: 2px;"></i>
+                    <div style="flex: 1;">
+                      <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 13px; font-weight: 700; color: var(--txt);">{{ item.name }}</span>
+                        <span class="badge" [class.b-g]="item.status === 'Passed'" [class.b-r]="item.status === 'Missing'">{{ item.status }}</span>
+                      </div>
+                      <p style="font-size: 12px; color: var(--txt3); margin: 4px 0 0 0;">{{ item.details }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- TAB: Finance Rollup -->
+          @if (activeProfileTab() === 'finance' && clientFinanceRollup(); as rollup) {
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Mini Rollup Summary Cards -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--border); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">TOTAL BILLED</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--txt); margin-top: 4px;">{{ fmtPrecise(rollup.billed) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--border); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">RECEIVED</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--g1); margin-top: 4px;">{{ fmtPrecise(rollup.received) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--border); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">OUTSTANDING</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--red); margin-top: 4px;">{{ fmtPrecise(rollup.outstanding) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--border); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">EXPENSES</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--purple); margin-top: 4px;">{{ fmtPrecise(rollup.expenses) }}</div>
+                </div>
+              </div>
+
+              <!-- Invoices Table -->
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--txt3); margin: 12px 0 8px 0; font-weight: 700; border-left: 3px solid var(--primary); padding-left: 8px;">Client Invoices</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
+                  @for (inv of rollup.invoices; track inv.id) {
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg2);">
+                      <div>
+                        <span style="font-family: monospace; font-weight: 700; font-size: 12px;">{{ inv.invoiceNo }}</span>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--txt3);">Matter: {{ inv.matterTitle || '—' }} · Due: {{ inv.dueDate }}</p>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-weight: 800; font-size: 12.5px;">{{ fmtPrecise(inv.amount) }}</span>
+                        <span class="badge" [class.b-g]="inv.status === 'Paid'" [class.b-r]="inv.status === 'Overdue'" [class.b-a]="inv.status === 'Unpaid'" [class.b-a-outline]="inv.status === 'Partially Paid'">
+                          {{ inv.status }}
+                        </span>
+                      </div>
+                    </div>
+                  } @empty {
+                    <p style="font-size: 11.5px; color: var(--txt3); font-style: italic; margin: 4px 0 0 0;">No invoices generated for this client.</p>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 16px;">
+          <button class="btn-outline" (click)="showViewModal.set(false)">Close</button>
+          <button class="btn-primary" (click)="openEditModal(client)"><i class="fas fa-edit"></i> Edit Details</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Edit Client Details (Refactored to include new fields) -->
+  @if (showEditForm() && selectedClient()) {
+    <div class="modal-overlay" (click)="showEditForm.set(false)">
+      <div class="modal" style="max-width: 750px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+          <h3><i class="fas fa-user-edit"></i> Edit Client Profile</h3>
+          <button class="modal-close" (click)="showEditForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+          <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            
+            <h4 style="grid-column: span 2; font-size: 13px; text-transform: uppercase; color: var(--txt3); margin: 10px 0 0 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Core Identity</h4>
+            <div class="fg">
+              <label>Full Legal Name *</label>
+              <input type="text" placeholder="Client Name" maxlength="100" [value]="editForm().name || ''" (input)="editForm.update(f => ({...f, name: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditNameValid">
+              @if (editSubmitted() && !isEditNameValid) {
+                <span class="error-msg">Name is required (min 2 characters)</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Display Name</label>
+              <input type="text" placeholder="Preferred Name" maxlength="100" [value]="editForm().displayName || ''" (input)="editForm.update(f => ({...f, displayName: $any($event.target).value}))">
+            </div>
+            <div class="fg"><label>Client Type</label>
+              <select [value]="editForm().type" (change)="editForm.update(f => ({...f, type: $any($event.target).value}))">
+                @for (t of types(); track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Status</label>
+              <select [value]="editForm().status" (change)="editForm.update(f => ({...f, status: $any($event.target).value}))">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <!-- Individual Fields Section -->
+            @if (editForm().type?.toLowerCase() === 'individual') {
+              <h4 style="grid-column: span 2; font-size: 13px; text-transform: uppercase; color: var(--txt3); margin: 10px 0 0 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Individual Profile Details</h4>
+              <div class="fg">
+                <label>Date of Birth</label>
+                <input type="date" [value]="editForm().dob || ''" (input)="editForm.update(f => ({...f, dob: $any($event.target).value}))">
+              </div>
+              <div class="fg">
+                <label>Gender</label>
+                <select [value]="editForm().gender || ''" (change)="editForm.update(f => ({...f, gender: $any($event.target).value}))">
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="fg" style="grid-column: span 2;">
+                <label>Father's / Husband's Name</label>
+                <input type="text" placeholder="Parent / Spouse Name" [value]="editForm().fatherSpouseName || ''" (input)="editForm.update(f => ({...f, fatherSpouseName: $any($event.target).value}))">
+              </div>
+            }
+
+            <h4 style="grid-column: span 2; font-size: 13px; text-transform: uppercase; color: var(--txt3); margin: 10px 0 0 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Contact Information</h4>
+            <div class="fg">
+              <label>Email Address</label>
+              <input type="email" placeholder="client@example.com" maxlength="100" [value]="editForm().email || ''" (input)="editForm.update(f => ({...f, email: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditEmailValid">
+            </div>
+            <div class="fg">
+              <label>Primary Mobile</label>
+              <input type="text" placeholder="+91 9999999999" maxlength="15" [value]="editForm().mobile || ''" (input)="editForm.update(f => ({...f, mobile: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditMobileValid">
+            </div>
+            <div class="fg">
+              <label>Alternate Mobile</label>
+              <input type="text" placeholder="Second contact number" maxlength="15" [value]="editForm().alternateMobile || ''" (input)="editForm.update(f => ({...f, alternateMobile: $any($event.target).value}))">
+            </div>
+            <div class="fg" style="grid-column: span 2;">
+              <label>Correspondence Address</label>
+              <input type="text" placeholder="Current address" [value]="editForm().address || ''" (input)="editForm.update(f => ({...f, address: $any($event.target).value}))">
+            </div>
+            <div class="fg" style="grid-column: span 2;">
+              <label>Billing Address (Leave blank if same)</label>
+              <input type="text" placeholder="Separate billing address if applicable" [value]="editForm().billingAddress || ''" (input)="editForm.update(f => ({...f, billingAddress: $any($event.target).value}))">
+            </div>
+
+            <h4 style="grid-column: span 2; font-size: 13px; text-transform: uppercase; color: var(--txt3); margin: 10px 0 0 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Legal, Compliance & Relationship</h4>
+            <div class="fg">
+              <label>PAN Card Number</label>
+              <input type="text" placeholder="ABCDE1234F" maxlength="10" [value]="editForm().pan || ''" (input)="editForm.update(f => ({...f, pan: $any($event.target).value?.toUpperCase()}))">
+            </div>
+            @if (editForm().type?.toLowerCase() === 'individual') {
+              <div class="fg">
+                <label>Aadhaar Card Number</label>
+                <input type="text" placeholder="12-digit UID" maxlength="20" [value]="editForm().aadhar || ''" (input)="editForm.update(f => ({...f, aadhar: $any($event.target).value}))">
+              </div>
+            } @else {
+              <div class="fg">
+                <label>GSTIN Number</label>
+                <input type="text" placeholder="15-digit GST registration" maxlength="20" [value]="editForm().gstin || ''" (input)="editForm.update(f => ({...f, gstin: $any($event.target).value?.toUpperCase()}))">
+              </div>
+            }
+            <div class="fg">
+              <label>ID Proof Type</label>
+              <select [value]="editForm().idProofType || ''" (change)="editForm.update(f => ({...f, idProofType: $any($event.target).value}))">
+                <option value="">Select ID Type</option>
+                <option value="Aadhaar">Aadhaar</option>
+                <option value="Passport">Passport</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Driving License">Driving License</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>ID Proof Number</label>
+              <input type="text" placeholder="ID Number" [value]="editForm().idProofNumber || ''" (input)="editForm.update(f => ({...f, idProofNumber: $any($event.target).value}))">
+            </div>
+
+            <div class="fg">
+              <label>Assigned Advocate</label>
+              <input type="text" placeholder="Responsible Advocate Name" [value]="editForm().assignedAdvocate || ''" (input)="editForm.update(f => ({...f, assignedAdvocate: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>Client Since</label>
+              <input type="date" [value]="editForm().clientSince || ''" (input)="editForm.update(f => ({...f, clientSince: $any($event.target).value}))">
+            </div>
+            <div class="fg" style="grid-column: span 2;">
+              <label>Referral Source</label>
+              <input type="text" placeholder="Referral / Source info" [value]="editForm().referralSource || ''" (input)="editForm.update(f => ({...f, referralSource: $any($event.target).value}))">
+            </div>
+
+            <div class="fg" style="grid-column: span 2; display: flex; flex-wrap: wrap; gap: 20px; padding: 8px 0;">
+              <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" style="width: auto; margin: 0; cursor: pointer;" [checked]="editForm().vakalatnamaOnFile" (change)="editForm.update(f => ({...f, vakalatnamaOnFile: !f.vakalatnamaOnFile}))">
+                Vakalatnama on File
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" style="width: auto; margin: 0; cursor: pointer;" [checked]="editForm().engagementLetterSigned" (change)="editForm.update(f => ({...f, engagementLetterSigned: !f.engagementLetterSigned}))">
+                Engagement Letter Signed
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" style="width: auto; margin: 0; cursor: pointer;" [checked]="editForm().dataConsent" (change)="editForm.update(f => ({...f, dataConsent: !f.dataConsent}))">
+                Compliance Data Consent Flag
+              </label>
+            </div>
+            <div class="fg" style="grid-column: span 2;">
+              <label>Conflict Check / Notes</label>
+              <textarea placeholder="Write conflict notes or records..." rows="3" [value]="editForm().conflictNotes || ''" (input)="editForm.update(f => ({...f, conflictNotes: $any($event.target).value}))" style="width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); color: var(--txt);"></textarea>
+            </div>
+
+            <!-- Corporate Extensions Section -->
+            @if (editForm().type?.toLowerCase() !== 'individual') {
+              <h4 style="grid-column: span 2; font-size: 13px; text-transform: uppercase; color: var(--txt3); margin: 10px 0 0 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Corporate Extension details</h4>
+              <div class="fg">
+                <label>Corporate Identification Number (CIN / LLPIN)</label>
+                <input type="text" placeholder="U12345DL2023PTC123456" [value]="editForm().cin || ''" (input)="editForm.update(f => ({...f, cin: $any($event.target).value}))">
+              </div>
+              <div class="fg">
+                <label>Incorporation Date</label>
+                <input type="date" [value]="editForm().incorporationDate || ''" (input)="editForm.update(f => ({...f, incorporationDate: $any($event.target).value}))">
+              </div>
+              <div class="fg" style="grid-column: span 2;">
+                <label>Registered Office Address</label>
+                <input type="text" placeholder="HQ Address" [value]="editForm().registeredOfficeAddress || ''" (input)="editForm.update(f => ({...f, registeredOfficeAddress: $any($event.target).value}))">
+              </div>
+              <div class="fg">
+                <label>Authorized Signatory Name</label>
+                <input type="text" placeholder="Name of rep" [value]="editForm().authorizedSignatoryName || ''" (input)="editForm.update(f => ({...f, authorizedSignatoryName: $any($event.target).value}))">
+              </div>
+              <div class="fg">
+                <label>Authorized Signatory Designation</label>
+                <input type="text" placeholder="e.g. Director / Partner" [value]="editForm().authorizedSignatoryDesignation || ''" (input)="editForm.update(f => ({...f, authorizedSignatoryDesignation: $any($event.target).value}))">
+              </div>
+            }
+
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 16px;">
+          <button class="btn-outline" (click)="showEditForm.set(false)">Cancel</button>
+          <button class="btn-primary" (click)="update()" [disabled]="editSubmitted() && !isEditFormValid"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+  <!-- Modal: Document Quick Preview (Shared details panel) -->
+  @if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+    <div class="modal-overlay" style="z-index: 1200;" (click)="showPreviewModal.set(false)">
+      <div class="modal" style="width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 12px 20px; background: var(--bg2);">
+          <div>
+            <h3 style="font-size: 14.5px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i> {{ previewDoc.name }}
+            </h3>
+            <span class="badge b-g" style="margin-top: 4px;">{{ previewDoc.type || 'Court Document' }}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn-xs btn-outline" style="padding: 6px 12px; font-size: 11px;" onclick="window.print()">
+              <i class="fas fa-print"></i> Print
+            </button>
+            @if (getPreviewDetails(); as details) {
+              <a [href]="details.rawUrl || '#'" [attr.download]="details.name" target="_blank" class="btn-xs btn-primary" style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" [style.opacity]="details.rawUrl ? '1' : '0.5'" [style.pointer-events]="details.rawUrl ? 'auto' : 'none'">
+                <i class="fas fa-download"></i> Download
+              </a>
+            }
+            <button class="modal-close" style="position: static; margin-left: 10px;" (click)="showPreviewModal.set(false)"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+
+        <!-- PDF Reader Toolbar Simulation -->
+        <div style="background: #334155; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid #1e293b;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+            <span style="font-weight: 600;">Page 1 of 1</span>
+            <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-minus"></i></button>
+            <span style="font-family: monospace;">100%</span>
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-plus"></i></button>
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; margin-left: 10px;"><i class="fas fa-expand"></i></button>
+          </div>
+          <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+            Source: {{ previewDoc.source || 'Secure Vault' }} | Verified
+          </div>
+        </div>
+
+        <div class="modal-body" style="flex: 1; overflow-y: auto; background: #475569; padding: 24px; display: flex; flex-direction: column; align-items: center; min-height: 480px; gap: 20px;">
+          @if (getPreviewDetails(); as details) {
+            @if (details.isImage) {
+              @if (details.rawUrl) {
+                <img [src]="details.rawUrl" style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;" />
+              } @else {
+                <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                  <i class="fas fa-image" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                  <p style="margin: 0; font-weight: 700;">No preview available for this image.</p>
+                  <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+                </div>
+              }
+            } @else if (details.isPdf) {
+              @if (details.localUrl) {
+                <iframe [src]="details.localUrl" style="width: 100%; height: 75vh; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;"></iframe>
+              } @else {
+                <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                  <i class="fas fa-file-pdf" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                  <p style="margin: 0; font-weight: 700;">No preview available for this PDF.</p>
+                  <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+                </div>
+              }
+            } @else if (details.isTemplateInstance) {
+              <!-- Simulated A4 Legal Page with dynamic data -->
+              <div style="width: 100%; max-width: 620px; min-height: 800px; background: #ffffff; padding: 48px 56px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; flex-direction: column; font-family: 'Times New Roman', Times, serif; color: #1e293b; position: relative; border-radius: 4px; box-sizing: border-box; text-align: left;">
+                <div style="position: absolute; top: 40%; left: 15%; right: 15%; transform: rotate(-30deg); font-size: 48px; font-weight: 800; color: rgba(220, 38, 38, 0.06); text-transform: uppercase; text-align: center; border: 8px double rgba(220, 38, 38, 0.06); padding: 10px; pointer-events: none; font-family: sans-serif; letter-spacing: 2px;">
+                  TUBA SmartCourt<br>Official Copy
+                </div>
+                <div style="text-align: center; border-bottom: 2px double #1e293b; padding-bottom: 12px; margin-bottom: 24px;">
+                  <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">Before the Honorable Court of Jurisdiction</h2>
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">At New Delhi, India</span>
+                </div>
+                <div style="font-size: 12.5px; line-height: 1.6; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; border-radius: 6px;">
+                  <div>
+                    <strong>PETITIONER / PLAINTIFF:</strong><br>
+                    <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.clientName }}</span><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Represented by Lead Counsel</span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 10px;">V / S</div>
+                  <div>
+                    <strong>RESPONDENT / DEFENDANT:</strong><br>
+                    <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.matterTitle }}</span><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Represented by Standing Counsel</span>
+                  </div>
+                </div>
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <h3 style="font-size: 13px; font-weight: 800; text-decoration: underline; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">
+                    SUBMISSIONS ON BEHALF OF THE PETITIONER: {{ details.name }}
+                  </h3>
+                </div>
+                <div style="font-size: 13px; line-height: 1.8; flex: 1; text-align: justify; color: #334155;">
+                  <p style="margin: 0 0 14px 0;"><strong>MOST RESPECTFULLY SHOWETH:</strong></p>
+                  <p style="margin: 0 0 14px 0;">
+                    1. That the present submissions are being filed in support of the petition challenging the arbitrary guidelines and directives issued. The document, specifically identified as <strong>{{ details.name }}</strong>, contains direct reference to input tax logs and verification certificates.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    2. That the file metadata records this as a <strong>{{ details.type || 'Affidavit / Submission' }}</strong> document, filed on date <strong>{{ details.date || '2026-07-14' }}</strong> and processed under standard digital encryption keys.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    3. That the uploader signature certificate belongs to <strong>Adv. Amit Sharma</strong>, who confirms that the contents are scanned, OCR indexed, and validated against conflict records.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    4. That the Petitioners pray this Honorable Court may be pleased to take the document on record and grant interim relief as requested in the application.
+                  </p>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; border-top: 1.5px solid #cbd5e1; padding-top: 16px;">
+                  <div>
+                    <div style="border: 2.5px solid #dc2626; color: #dc2626; font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 6px 12px; border-radius: 6px; transform: rotate(-8deg); letter-spacing: 0.8px; font-family: sans-serif; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: rgba(220,38,38,0.02); text-align: center; line-height: 1.3;">
+                      COURT RECORDS<br>
+                      <span style="font-size: 8px; font-weight: 500;">DIGITALLY SECURED</span><br>
+                      <span style="font-size: 8.5px; font-weight: 700;">ID: {{ details.id || 'VAULT-991' }}</span>
+                    </div>
+                  </div>
+                  <div style="text-align: right; font-size: 12.5px; color: #0f172a; font-family: sans-serif; line-height: 1.5;">
+                    <span style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 15px; color: #475569; display: block; margin-bottom: 6px;">Amit Sharma</span>
+                    <strong>Advocate for Petitioner</strong><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Bar Council No: D/1049/2018</span>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                <p style="margin: 0; font-weight: 700;">No preview available for this document type.</p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+              </div>
+            }
+          }
+
+        </div>
+      </div>
+    </div>
+  }

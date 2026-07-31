@@ -1,0 +1,78 @@
+<div class="page" id="kb-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-book-open"></i> Knowledge Base</h1>
+      <p class="pg-sub">Legal templates, dynamic judgments & journal articles</p>
+    </div>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="tab() === 'judgments'" (click)="tab.set('judgments')">Judgments &amp; Citations</button>
+    <button class="ftab" [class.active]="tab() === 'templates'" (click)="tab.set('templates')">Draft Templates</button>
+    <button class="ftab" [class.active]="tab() === 'articles'" (click)="tab.set('articles')">Research Journal</button>
+  </div>
+
+  <div class="kb-content-area">
+    <!-- Judgments -->
+    @if (tab() === 'judgments') {
+      <div class="card">
+        <div class="card-header"><span class="card-title">Landmark Judgments</span></div>
+        <div class="kb-list">
+          @for (j of judgments(); track j.title) {
+            <div class="kb-item">
+              <div class="kb-icon-wrap ic-blue"><i class="fas fa-gavel"></i></div>
+              <div class="kb-body">
+                <div class="kb-title">{{ j.title }}</div>
+                <div class="kb-meta">{{ j.court }}</div>
+              </div>
+              <span class="badge" [class]="j.tag">{{ j.label }}</span>
+            </div>
+          } @empty {
+            <div class="empty-state"><i class="fas fa-gavel"></i><p>No judgments found.</p></div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Templates -->
+    @if (tab() === 'templates') {
+      <div class="card">
+        <div class="card-header"><span class="card-title">Preformatted Draft Templates</span></div>
+        <div class="kb-list">
+          @for (t of templates(); track t.name) {
+            <div class="kb-item">
+              <div class="kb-icon-wrap ic-green"><i class="fas fa-file-invoice"></i></div>
+              <div class="kb-body">
+                <div class="kb-title">{{ t.name }}</div>
+                <div class="kb-meta">Type: {{ t.type }} · Last updated: {{ t.updatedAt }}</div>
+              </div>
+              <button class="btn-xs"><i class="fas fa-download"></i> Use template</button>
+            </div>
+          } @empty {
+            <div class="empty-state"><i class="fas fa-file-lines"></i><p>No templates found.</p></div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Articles -->
+    @if (tab() === 'articles') {
+      <div class="card">
+        <div class="card-header"><span class="card-title">Legal Articles &amp; Insights</span></div>
+        <div class="kb-list">
+          @for (a of articles(); track a.title) {
+            <div class="kb-item-large">
+              <div class="kbl-body">
+                <h4 class="kbl-title">{{ a.title }}</h4>
+                <p class="kbl-summary">{{ a.summary }}</p>
+                <div class="kbl-footer">Written by {{ a.author }} · Published {{ a.date }}</div>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty-state"><i class="fas fa-newspaper"></i><p>No articles found.</p></div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

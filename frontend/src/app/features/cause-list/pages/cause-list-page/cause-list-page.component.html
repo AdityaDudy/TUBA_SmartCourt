@@ -1,0 +1,408 @@
+<div class="page" id="cause-list-page">
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <div class="pg-header">
+    <div class="header-left">
+      <div class="page-icon-lg">
+        <i class="fas fa-gavel"></i>
+      </div>
+      <div>
+        <h1 class="pg-title">Cause List</h1>
+        <p class="pg-sub">{{ displayDate() }}</p>
+      </div>
+    </div>
+    <div class="header-right">
+      @if (isAdmin()) {
+        <button class="btn btn-outline btn-sm sync-btn"
+                id="cause-list-sync-btn"
+                (click)="syncNow()"
+                [disabled]="syncing()">
+          <i class="fas" [class.fa-rotate]="!syncing()" [class.fa-circle-notch]="syncing()" [class.fa-spin]="syncing()"></i>
+          {{ syncing() ? 'Syncing…' : 'Sync from eCourts' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- ── Stats Summary ──────────────────────────────────── -->
+  <div class="stats-row">
+    <div class="stat-chip" id="cause-stat-total">
+      <span class="stat-num">{{ hearings().length }}</span>
+      <span class="stat-lbl">Total</span>
+    </div>
+    <div class="stat-chip chip-urgent" id="cause-stat-urgent">
+      <i class="fas fa-circle-exclamation"></i>
+      <span class="stat-num">{{ urgentCount() }}</span>
+      <span class="stat-lbl">Urgent</span>
+    </div>
+    <div class="stat-chip chip-sched" id="cause-stat-scheduled">
+      <i class="fas fa-clock"></i>
+      <span class="stat-num">{{ scheduledCount() }}</span>
+      <span class="stat-lbl">Scheduled</span>
+    </div>
+    <div class="stat-chip chip-done" id="cause-stat-completed">
+      <i class="fas fa-circle-check"></i>
+      <span class="stat-num">{{ completedCount() }}</span>
+      <span class="stat-lbl">Completed</span>
+    </div>
+  </div>
+
+  <!-- ── Date Navigator & View Scope ─────────────────────── -->
+  <div class="date-nav-row">
+    <div class="date-nav" id="cause-date-nav">
+      <button class="date-nav-btn" id="cause-date-prev" (click)="goToDate(-1)">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <div class="date-nav-center">
+        <i class="fas fa-calendar-days"></i>
+        <input type="date"
+               class="date-picker-input"
+               id="cause-date-picker"
+               [ngModel]="viewDate()"
+               (ngModelChange)="onDatePicked($event)" />
+        @if (dateMode() === 'date' && !isToday()) {
+          <button class="today-pill" id="cause-date-today" (click)="goToToday()">Today</button>
+        }
+      </div>
+      <button class="date-nav-btn" id="cause-date-next" (click)="goToDate(1)">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- View scope mode (Selected Date vs All / Upcoming Hearings) -->
+    <div class="scope-toggle" id="cause-scope-toggle">
+      <button class="scope-btn" [class.active]="dateMode() === 'date'" (click)="setDateMode('date')">
+        <i class="fas fa-calendar-day"></i> Selected Date
+      </button>
+      <button class="scope-btn" [class.active]="dateMode() === 'all'" (click)="setDateMode('all')">
+        <i class="fas fa-list-ul"></i> All Hearings / Overview
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Filters Row ────────────────────────────────────── -->
+  <div class="filters-row">
+    <!-- Court type tabs -->
+    <div class="filter-tabs" id="cause-court-tabs">
+      @for (f of courtTabs; track f) {
+        <button class="ftab" [class.active]="courtFilter() === f"
+                [id]="'cause-court-' + f.toLowerCase()"
+                (click)="courtFilter.set(f)">
+          {{ f }}
+        </button>
+      }
+    </div>
+
+    <div class="filter-right">
+      <!-- Status tabs -->
+      <div class="status-tabs" id="cause-status-tabs">
+        @for (s of statusTabs; track s) {
+          <button class="stab" [class.active]="statusFilter() === s"
+                  [id]="'cause-status-' + s.toLowerCase()"
+                  (click)="statusFilter.set(s)">
+            {{ s }}
+          </button>
+        }
+      </div>
+
+      <!-- Search -->
+      <div class="search-wrap" id="cause-search-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text"
+               id="cause-search-input"
+               placeholder="Search case, advocate…"
+               [ngModel]="searchQuery()"
+               (ngModelChange)="searchQuery.set($event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Table Card ────────────────────────────────── -->
+  <div class="card tbl-card">
+    @if (loading()) {
+      <!-- Skeleton rows -->
+      <div class="skeleton-table">
+        @for (i of [1,2,3,4,5]; track i) {
+          <div class="skel-row">
+            <div class="skel-block" style="width:28px;"></div>
+            <div class="skel-block" style="width:110px;"></div>
+            <div class="skel-block skel-wide"></div>
+            <div class="skel-block" style="width:70px;"></div>
+            <div class="skel-block" style="width:90px;"></div>
+            <div class="skel-block" style="width:55px;"></div>
+            <div class="skel-block" style="width:110px;"></div>
+            <div class="skel-block" style="width:68px;"></div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="tbl-wrap">
+        <table class="data-table" id="cause-list-table">
+          <thead>
+            <tr>
+              <th class="col-sr">#</th>
+              <th class="col-date">Hearing Date</th>
+              <th class="col-case">Case No.</th>
+              <th class="col-title">Case Title</th>
+              <th class="col-court">Court</th>
+              <th class="col-bench">Bench</th>
+              <th class="col-time">Time</th>
+              <th class="col-adv">Advocate</th>
+              <th class="col-stage">Stage</th>
+              <th class="col-status">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (h of paginatedHearings(); track h.id; let i = $index) {
+              <tr class="tr-hover hearing-row"
+                  [class.urgent-row]="h.status === 'Urgent'"
+                  [class.completed-row]="h.status === 'Completed'"
+                  [id]="'cause-row-' + (h.id || i)"
+                  (click)="openDetail(h)"
+                  style="cursor: pointer;">
+                <td class="col-sr">{{ (currentPage() - 1) * pageSize() + i + 1 }}</td>
+
+                <td class="col-date">
+                  <span class="date-chip">
+                    <i class="fas fa-calendar-day"></i>
+                    {{ formatHearingDate(h.hearingDate) }}
+                  </span>
+                </td>
+
+                <td class="col-case">
+                  <span class="case-no mono">{{ caseNo(h) }}</span>
+                </td>
+
+                <td class="col-title">
+                  <div class="case-title-cell">
+                    <div class="case-name">{{ caseTitle(h) }}</div>
+                    @if (h.stage) {
+                      <div class="case-stage-sub">{{ h.stage }}</div>
+                    }
+                  </div>
+                </td>
+
+                <td class="col-court">
+                  <div class="court-cell">
+                    <i class="fas court-icon" [class]="courtIcon(h.court)"></i>
+                    <span>{{ h.court ?? '—' }}</span>
+                  </div>
+                </td>
+
+                <td class="col-bench">{{ h.bench ?? '—' }}</td>
+
+                <td class="col-time">
+                  <span class="time-chip">
+                    <i class="fas fa-clock"></i>
+                    {{ hearingTime(h) }}
+                  </span>
+                </td>
+
+                <td class="col-adv">
+                  <div class="adv-cell">
+                    <div class="adv-avatar">{{ (h.advocate || h.adv || '?').charAt(0).toUpperCase() }}</div>
+                    <span>{{ h.advocate ?? h.adv ?? '—' }}</span>
+                  </div>
+                </td>
+
+                <td class="col-stage">{{ h.stage ?? '—' }}</td>
+
+                <td class="col-status">
+                  <span class="badge" [class]="statusClass(h.status)">
+                    @if (h.status === 'Urgent') { <i class="fas fa-circle-exclamation"></i> }
+                    @if (h.status === 'Completed') { <i class="fas fa-circle-check"></i> }
+                    {{ h.status }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-cell" id="cause-empty-state">
+                  <div class="empty-inner">
+                    <div class="empty-icon"><i class="fas fa-calendar-xmark"></i></div>
+                    <div class="empty-title">No hearings found</div>
+                    <div class="empty-sub">
+                      @if (searchQuery() || courtFilter() !== 'All' || statusFilter() !== 'All') {
+                        Try adjusting your filters or search query.
+                      } @else {
+                        No hearings are scheduled for this date.
+                        @if (isAdmin()) {
+                          <br/><br/>
+                          <button class="btn btn-primary btn-sm" (click)="syncNow()">
+                            <i class="fas fa-rotate"></i> Sync from eCourts data
+                          </button>
+                        }
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (filtered().length > 0) {
+        <div class="tbl-footer pagination-footer">
+          <div class="page-size-selector">
+            <span>Show</span>
+            <select [value]="pageSize()" (change)="changePageSize(+$any($event.target).value)" class="page-size-select">
+              @for (size of pageSizeOptions; track size) {
+                <option [value]="size">{{ size }}</option>
+              }
+            </select>
+            <span>per page</span>
+          </div>
+
+          <div class="pagination-info">
+            Showing <strong>{{ (currentPage() - 1) * pageSize() + 1 }}</strong> - <strong>{{ Math.min(currentPage() * pageSize(), filtered().length) }}</strong> of <strong>{{ filtered().length }}</strong>
+          </div>
+
+          <div class="pagination-controls">
+            <button class="page-btn" [disabled]="currentPage() === 1" (click)="setPage(1)" title="First Page">
+              <i class="fas fa-angles-left"></i>
+            </button>
+            <button class="page-btn" [disabled]="currentPage() === 1" (click)="setPage(currentPage() - 1)" title="Previous Page">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-num-badge">Page <strong>{{ currentPage() }}</strong> of <strong>{{ totalPages() }}</strong></span>
+            <button class="page-btn" [disabled]="currentPage() === totalPages()" (click)="setPage(currentPage() + 1)" title="Next Page">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="page-btn" [disabled]="currentPage() === totalPages()" (click)="setPage(totalPages())" title="Last Page">
+              <i class="fas fa-angles-right"></i>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!--  HEARING DETAIL MODAL POPUP                                    -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  @if (selectedHearing()) {
+    @let h = selectedHearing()!;
+    <div class="modal-backdrop" (click)="closeDetail()">
+      <div class="modal-card cause-modal" (click)="$event.stopPropagation()">
+        
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon-badge" [class]="statusClass(h.status)">
+              <i class="fas" [class]="courtIcon(h.court)"></i>
+            </div>
+            <div>
+              <h2 class="modal-case-title">{{ caseTitle(h) }}</h2>
+              <div class="modal-case-sub">
+                <span class="mono">{{ caseNo(h) }}</span>
+                <span class="sep">•</span>
+                <span>{{ h.court || 'Court N/A' }}</span>
+              </div>
+            </div>
+          </div>
+          <button class="modal-close-btn" (click)="closeDetail()">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+          <div class="detail-grid">
+
+            <!-- Hearing Date & Time -->
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-calendar-day"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Hearing Date</span>
+                <span class="tile-val">{{ formatHearingDate(h.hearingDate) }}</span>
+              </div>
+            </div>
+
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-clock"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Listing Time</span>
+                <span class="tile-val">{{ hearingTime(h) }}</span>
+              </div>
+            </div>
+
+            <!-- Court Forum & Bench -->
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-landmark"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Court Forum</span>
+                <span class="tile-val">{{ h.court || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-gavel"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Bench / Judge</span>
+                <span class="tile-val">{{ h.bench || '—' }}</span>
+              </div>
+            </div>
+
+            <!-- Assigned Advocate & Stage -->
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-user-tie"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Assigned Advocate</span>
+                <span class="tile-val">{{ h.advocate || h.adv || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-list-check"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Stage of Hearing</span>
+                <span class="tile-val">{{ h.stage || '—' }}</span>
+              </div>
+            </div>
+
+            <!-- Status & Forum Type -->
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-signal"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Hearing Status</span>
+                <span class="tile-val">
+                  <span class="badge" [class]="statusClass(h.status)">
+                    {{ h.status }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="detail-tile">
+              <div class="tile-icon"><i class="fas fa-layer-group"></i></div>
+              <div class="tile-content">
+                <span class="tile-label">Court Type</span>
+                <span class="tile-val">{{ h.type || 'Standard' }}</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Quick Action to Matter Details if available -->
+          @if (h.matterId) {
+            <div class="modal-link-box">
+              <i class="fas fa-link"></i>
+              <span>Linked to Matter <strong>#{{ h.matterId }}</strong></span>
+              <a [routerLink]="['/app/matters', h.matterId]" class="btn btn-outline btn-sm" (click)="closeDetail()">
+                View Linked Matter <i class="fas fa-arrow-right"></i>
+              </a>
+            </div>
+          }
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+          <button class="btn btn-outline" (click)="closeDetail()">Close</button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+</div>
+

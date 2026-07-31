@@ -1,0 +1,349 @@
+<div class="dashboard" id="dashboard-page">
+
+  <!-- Page Header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title">Good morning, {{ userName() || 'Advocate' }}! 👋</h1>
+      <p class="pg-sub">{{ today | date:'EEEE, d MMMM y' }} · Here's your court overview for today.</p>
+    </div>
+    <div class="pg-actions">
+      <button class="btn-outline" (click)="showConfigPanel.set(!showConfigPanel())">
+        <i class="fas fa-sliders"></i> Customize Widgets
+      </button>
+      <button class="btn-outline" routerLink="/app/diary"><i class="fas fa-calendar-days"></i> Diary</button>
+    </div>
+  </div>
+
+  <!-- Customization Panel -->
+  @if (showConfigPanel()) {
+  <div class="config-panel card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-cog"></i> Toggle Dashboard Widgets</span>
+    </div>
+    <div class="config-options">
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('alerts')" (change)="toggleWidget('alerts')">
+        <span>Urgent Alerts</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('actions')" (change)="toggleWidget('actions')">
+        <span>Quick Actions Row</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('kpis')" (change)="toggleWidget('kpis')">
+        <span>Overview KPI Strip</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('causelist')" (change)="toggleWidget('causelist')">
+        <span>Today's Cause List</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('timeline')" (change)="toggleWidget('timeline')">
+        <span>Legal Timeline Feed</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('tasks')" (change)="toggleWidget('tasks')">
+        <span>Pending Tasks</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('courtDist')" (change)="toggleWidget('courtDist')">
+        <span>Cases by Court Chart</span>
+      </label>
+      @if (isAdmin()) {
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('teamPerf')" (change)="toggleWidget('teamPerf')">
+        <span>Team Performance</span>
+      </label>
+      <label class="config-item">
+        <input type="checkbox" [checked]="isWidgetActive('revenue')" (change)="toggleWidget('revenue')">
+        <span>Revenue Statistics</span>
+      </label>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- URGENT HEARINGS ALERTS -->
+  @if (isWidgetActive('alerts') && urgentHearings.length > 0) {
+  <div class="alert alert-r">
+    <i class="fas fa-exclamation-triangle animate-pulse"></i>
+    <strong>{{ urgentHearings.length }} urgent hearings today</strong> —
+    @for (h of urgentHearings; track h.id; let isLast = $last) {
+    {{ h.court }} at {{ h.hearingTime || 'TBA' }}{{ !isLast ? ' · ' : '' }}
+    }
+    <button class="btn btn-xs btn-outline" (click)="drillToHearings('Urgent')"
+      style="margin-left:auto; background:var(--red); color:#fff; border:none;">
+      View All
+    </button>
+  </div>
+  }
+
+  <!-- QUICK ACTIONS GRID (Role-Aware) -->
+  @if (isWidgetActive('actions')) {
+  <div class="qa-grid">
+    @if (canCreateMatter()) {
+    <div class="qa-btn" (click)="openAddMatter()">
+      <div class="qa-icon" style="background:#dcfce7;color:var(--g1)"><i class="fas fa-briefcase"></i></div>
+      <span class="qa-label">New Matter</span>
+    </div>
+    }
+    <div class="qa-btn" (click)="openTracker()">
+      <div class="qa-icon" style="background:#dbeafe;color:var(--blue)"><i class="fas fa-search"></i></div>
+      <span class="qa-label">Track Case</span>
+    </div>
+    <div class="qa-btn" (click)="openAddClient()">
+      <div class="qa-icon" style="background:#fef3c7;color:var(--acc)"><i class="fas fa-user-plus"></i></div>
+      <span class="qa-label">Add Client</span>
+    </div>
+    <div class="qa-btn" (click)="openAddTask()">
+      <div class="qa-icon" style="background:#ede9fe;color:var(--purple)"><i class="fas fa-tasks"></i></div>
+      <span class="qa-label">Add Task</span>
+    </div>
+    <div class="qa-btn" (click)="openNewFiling()">
+      <div class="qa-icon" style="background:#fce7f3;color:#be185d"><i class="fas fa-file-upload"></i></div>
+      <span class="qa-label">New Filing</span>
+    </div>
+    <div class="qa-btn" (click)="openAiAssistant()">
+      <div class="qa-icon" style="background:#ede9fe;color:var(--purple)"><i class="fas fa-robot"></i></div>
+      <span class="qa-label">Ask AI</span>
+    </div>
+    @if (canInvoice()) {
+    <div class="qa-btn" (click)="openInvoice()">
+      <div class="qa-icon" style="background:#dcfce7;color:var(--g1)"><i class="fas fa-file-invoice"></i></div>
+      <span class="qa-label">Invoice</span>
+    </div>
+    }
+    <div class="qa-btn" (click)="openUpload()">
+      <div class="qa-icon" style="background:#dbeafe;color:var(--blue)"><i class="fas fa-cloud-upload-alt"></i></div>
+      <span class="qa-label">Upload</span>
+    </div>
+  </div>
+  }
+
+  @if (isWidgetActive('kpis')) {
+  <div class="divider-label"><i class="fas fa-chart-pie" style="color:var(--g1)"></i>Overview</div>
+
+  <!-- Stats Grid -->
+  @if (mattersLoading() && !stats()) {
+  <app-skeleton type="stat" [rows]="6"></app-skeleton>
+  } @else {
+  <div class="stats-grid">
+    <div class="stat-card sc-green clickable card-interactive" (click)="drillToMatters('Active')">
+      <div class="sc-icon"><i class="fas fa-folder-open"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.activeMatters ?? matters().length"></div>
+        <div class="sc-lbl">Active Matters</div>
+        <div class="sc-sub">{{ stats()?.closedThisYear ?? 0 }} closed this year</div>
+      </div>
+    </div>
+    <div class="stat-card sc-green clickable card-interactive" (click)="drillToMatters('Disposed')">
+      <div class="sc-icon"><i class="fas fa-circle-check"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.closedThisYear ?? 0"></div>
+        <div class="sc-lbl">Closed This Year</div>
+        <div class="sc-sub">Click to view resolved cases</div>
+      </div>
+    </div>
+    <div class="stat-card sc-amber clickable card-interactive" (click)="drillToHearings('Today')">
+      <div class="sc-icon"><i class="fas fa-gavel"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.hearingsToday ?? todayHearings.length"></div>
+        <div class="sc-lbl">Hearings Today</div>
+        <div class="sc-sub">{{ stats()?.urgentHearings ?? urgentHearings.length }} urgent cases</div>
+      </div>
+    </div>
+    <div class="stat-card sc-blue clickable card-interactive" routerLink="/app/diary">
+      <div class="sc-icon"><i class="fas fa-calendar-days"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.hearingsThisWeek ?? 0"></div>
+        <div class="sc-lbl">This Week Diary</div>
+        <div class="sc-sub">Scheduled appointments</div>
+      </div>
+    </div>
+    <div class="stat-card sc-purple clickable card-interactive" (click)="drillToFilings()">
+      <div class="sc-icon"><i class="fas fa-file-signature"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.pendingFilings ?? 0"></div>
+        <div class="sc-lbl">Pending Filings</div>
+        <div class="sc-sub">Non-terminal filings</div>
+      </div>
+    </div>
+    <div class="stat-card sc-red clickable card-interactive" (click)="drillToTasks('Open')">
+      <div class="sc-icon"><i class="fas fa-list-check"></i></div>
+      <div class="sc-body">
+        <div class="sc-val" [appCountUp]="stats()?.openTasks ?? openTasks.length"></div>
+        <div class="sc-lbl">Open Tasks</div>
+        <div class="sc-sub">Actions pending details</div>
+      </div>
+    </div>
+  </div>
+  }
+  }
+
+  <!-- Main grid -->
+  <div class="dash-grid">
+    <!-- Cause List -->
+    @if (isWidgetActive('causelist')) {
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fas fa-gavel"></i> Today's Cause List</span>
+        <a class="card-link" routerLink="/app/cause-list">View All →</a>
+      </div>
+      @if (hearingsLoading()) {
+      <app-skeleton type="list" [rows]="4"></app-skeleton>
+      } @else {
+      @for (h of todayHearings; track h.id; let i = $index) {
+      @if (i < 5) { <div class="cl-item">
+        <div class="cl-left">
+          <div class="cl-time">{{ h.hearingTime || '–' }}</div>
+          <div class="cl-dot" [class.dot-urgent]="h.status === 'Urgent'"></div>
+        </div>
+        <div class="cl-body">
+          <div class="cl-title">{{ h.caseTitle }}</div>
+          <div class="cl-sub">{{ h.court }} · {{ h.bench }}</div>
+        </div>
+        <span class="badge" [class]="h.status === 'Urgent' ? 'b-r' : 'b-g'">{{ h.status }}</span>
+    </div>
+    }
+    } @empty {
+    <app-empty-state icon="calendar-check" title="Clear today" subtitle="No hearings scheduled for today."
+      actionLabel="View Cause List" actionRoute="/app/cause-list">
+    </app-empty-state>
+    }
+    }
+  </div>
+  }
+
+  <!-- Timeline -->
+  @if (isWidgetActive('timeline')) {
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-timeline"></i> Today's Schedule</span>
+    </div>
+    @for (e of timeline(); track $index) {
+    <div class="timeline-item" [class.tl-urgent]="e.urgent">
+      <div class="tl-dot"></div>
+      <div class="tl-body">
+        <div class="tl-title">{{ e.title }}</div>
+        <div class="tl-sub">{{ e.sub }}</div>
+      </div>
+      @if (e.urgent) { <span class="badge b-r">Urgent</span> }
+    </div>
+    } @empty {
+    <div class="empty-state"><i class="fas fa-calendar"></i>
+      <p>Clear schedule</p>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Today's Tasks -->
+  @if (isWidgetActive('tasks')) {
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-list-check"></i> Pending Tasks</span>
+      <a class="card-link" routerLink="/app/tasks">Manage →</a>
+    </div>
+    @for (t of openTasks; track t.id; let i = $index) {
+    @if (i < 5) { <div class="task-item" [class.task-fading]="t.done">
+      <div class="task-body">
+        <div class="task-title" [class.struck]="t.done">{{ t.title }}</div>
+        <div class="task-sub">{{ t.matterTitle }} · {{ t.assignedTo }}</div>
+      </div>
+      <span class="badge b-r">{{ t.priority }}</span>
+  </div>
+  }
+  } @empty {
+  <app-empty-state icon="circle-check" title="All caught up!"
+    subtitle="No pending tasks. Add new tasks to stay on track." actionLabel="Add Task" actionRoute="/app/tasks">
+  </app-empty-state>
+  }
+</div>
+}
+
+<!-- Cases by Court -->
+@if (isWidgetActive('courtDist')) {
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-landmark"></i> Cases by Court</span>
+  </div>
+  <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 12px;">
+    @for (c of courtDist(); track c.court) {
+    <div class="team-item clickable" style="padding: 2px 0; border: none;" (click)="drillToMatters(undefined, c.court)">
+      <div class="team-body"
+        style="display: grid; grid-template-columns: 140px 1fr 55px; align-items: center; gap: 12px;">
+        <span style="font-weight:700; color:var(--txt2); font-size: 12.5px;">{{ c.court }}</span>
+        <div class="team-bar-wrap"
+          style="margin: 0; height: 6px; background: var(--bgs); border: 1px solid var(--bdr);">
+          <div class="team-bar" [style.width.%]="(c.count / 20) * 100" style="height: 100%; border-radius: 2px;"></div>
+        </div>
+        <span style="font-weight:800; color:var(--txt); text-align: right; font-size: 12.5px;">
+          {{ c.count }} · {{ ((c.count / matters().length) * 100) | number:'1.0-0' }}%
+        </span>
+      </div>
+    </div>
+    } @empty {
+    <div class="empty-state">
+      <i class="fas fa-landmark"></i>
+      <p>No court distribution data available</p>
+    </div>
+    }
+  </div>
+</div>
+}
+
+<!-- Team Performance (Admin Only) -->
+@if (isAdmin() && isWidgetActive('teamPerf')) {
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-users"></i> Team Performance</span>
+  </div>
+  @for (m of teamPerf(); track m.name) {
+  <div class="team-item">
+    <div class="team-av">{{ m.name.substring(0, 2).toUpperCase() }}</div>
+    <div class="team-body">
+      <div class="team-name">{{ m.name }}</div>
+      <div class="team-bar-wrap">
+        <div class="team-bar" [style.width]="barWidth(m.percentage)"></div>
+      </div>
+      <div class="team-stat">{{ m.tasksOpen }} open / {{ m.tasksTotal }} total</div>
+    </div>
+    <div class="team-pct">{{ m.percentage }}%</div>
+  </div>
+  }
+</div>
+}
+
+<!-- Revenue (Admin Only) -->
+@if (isAdmin() && isWidgetActive('revenue') && revenue()) {
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-chart-bar"></i> Revenue — {{ revenue().month }} {{ revenue().year
+      }}</span>
+    <a class="card-link" routerLink="/app/billing">Details →</a>
+  </div>
+  <div class="revenue-cards">
+    <div class="rev-stat rs-red clickable" (click)="drillToBilling('Overdue')">
+      <div class="rs-label">Overdue</div>
+      <div class="rs-val">{{ formatCurrency(revenue().overdue) }}</div>
+    </div>
+    <div class="rev-stat rs-green clickable" (click)="drillToBilling('Paid')">
+      <div class="rs-label">Collected</div>
+      <div class="rs-val">{{ formatCurrency(revenue().collected) }}</div>
+    </div>
+  </div>
+  <div class="weekly-chart">
+    @for (d of revenue().weeklyData; track d.label) {
+    <div class="wc-col">
+      <div class="wc-bar-wrap">
+        <div class="wc-bar" [style.height.%]="(d.amount / 25000) * 100"></div>
+      </div>
+      <div class="wc-lbl">{{ d.label }}</div>
+    </div>
+    }
+  </div>
+</div>
+}
+</div>
+
+</div>

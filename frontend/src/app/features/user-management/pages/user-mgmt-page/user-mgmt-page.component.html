@@ -1,0 +1,662 @@
+<div class="page" id="user-mgmt-page">
+
+  <!-- Page Header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-user-shield"></i> User Management</h1>
+      <p class="pg-sub">Manage firm advocates, legal associates, security settings &amp; roles</p>
+    </div>
+  </div>
+
+  <!-- Stats Cards Row -->
+  <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="sc g">
+      <div class="sc-lbl">TOTAL USERS</div>
+      <div class="sc-val" [appCountUp]="totalUsersCount()"></div>
+      <i class="fa-solid fa-users sc-icon"></i>
+    </div>
+    <div class="sc g">
+      <div class="sc-lbl">ONLINE NOW</div>
+      <div class="sc-val" [appCountUp]="onlineUsersCount()"></div>
+      <div class="sc-meta up"><i class="fa-solid fa-circle" style="font-size:6px;"></i> Active sessions</div>
+      <i class="fa-solid fa-wifi sc-icon"></i>
+    </div>
+    <div class="sc r">
+      <div class="sc-lbl">INACTIVE</div>
+      <div class="sc-val" [appCountUp]="inactiveUsersCount()"></div>
+      <i class="fa-solid fa-user-slash sc-icon"></i>
+    </div>
+  </div>
+
+  <!-- System Users Section -->
+  <div class="card users-card">
+    <div class="users-header">
+      <div class="users-header-title">
+        <h3><i class="fas fa-users-cog"></i> System Users</h3>
+      </div>
+
+      <!-- Filter Tabs & Actions -->
+      <div class="users-actions">
+        <div class="tabs-filter">
+          <button [class.active]="activeRoleTab() === 'all'" (click)="activeRoleTab.set('all')">All</button>
+          @for (role of availableRoles(); track role) {
+          <button [class.active]="activeRoleTab() === role" (click)="activeRoleTab.set(role)">{{ getRoleLabel(role)
+            }}</button>
+          }
+        </div>
+
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search users…" [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)" aria-label="Search users">
+        </div>
+
+        <button class="btn-primary" (click)="openInviteModal()">
+          <i class="fas fa-plus"></i> Create
+        </button>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    @if (usersLoading()) {
+    <div class="loading-state">
+      <i class="fas fa-circle-notch fa-spin"></i> Loading users…
+    </div>
+    } @else {
+    <div class="tbl-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" class="tbl-check" [checked]="isAllSelected()"
+                (change)="toggleSelectAll()" [attr.aria-label]="'Select all users'">
+            </th>
+            <th>USER</th>
+            <th>ROLE</th>
+            <th>DEPARTMENT</th>
+            <th>DESIGNATION</th>
+            <th>MATTERS</th>
+            <th>LAST LOGIN</th>
+            <th>STATUS</th>
+            <th style="text-align: center; width: 100px;">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of filteredUsers(); track u.id) {
+          <tr class="tr-hover" [class.row-selected]="isUserSelected(String(u.id))">
+            <td>
+              <input type="checkbox" class="tbl-check" [checked]="isUserSelected(String(u.id))"
+                (change)="toggleUserSelect(String(u.id))" (click)="$event.stopPropagation()"
+                [attr.aria-label]="'Select ' + u.name">
+            </td>
+            <td>
+              <div class="user-cell">
+                <div class="avatar" [style.background]="u.avatar ? 'transparent' : (u.bg || 'linear-gradient(135deg, var(--g1), var(--g2))')">
+                  @if (u.avatar) {
+                    <img [src]="u.avatar" [alt]="u.name" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                  } @else {
+                    {{ u.av || getInitials(u.name) }}
+                  }
+                </div>
+                <div class="user-meta">
+                  <span class="user-name">{{ u.name }}</span>
+                  <span class="user-email">{{ u.email }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [class]="getRoleBadgeClass(u.role)">
+                {{ getRoleLabel(u.role) }}
+              </span>
+            </td>
+            <td>{{ u.department || '—' }}</td>
+            <td>
+              <span style="font-weight: 600; color: var(--txt);">{{ u.designation || '—' }}</span>
+            </td>
+            <td>
+              <span class="matters-count">{{ getUserMattersCount(u) }}</span>
+            </td>
+            <td>{{ formatTime(u.lastLogin) || '—' }}</td>
+            <td>
+              <div class="status-cell">
+                <span class="status-dot" [class.online]="isUserOnline(u)"
+                  [class.offline]="!isUserOnline(u)"></span>
+                <span class="status-text">{{ isUserOnline(u) ? 'Online' : 'Offline' }}</span>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <div class="action-buttons"
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                <button class="btn-icon" title="Edit details &amp; permissions" aria-label="Edit user"
+                  (click)="openEditModal(u)">
+                  <i class="fas fa-edit"></i>
+                </button>
+                @if (u.status === 'active' || u.status === 'online') {
+                <button class="btn-icon text-red" title="Suspend user" aria-label="Suspend user"
+                  (click)="confirmSuspend(u, $event)">
+                  <i class="fas fa-ban"></i>
+                </button>
+                } @else {
+                <button class="btn-icon text-green" title="Activate user" aria-label="Activate user"
+                  (click)="activateUser(u, $event)">
+                  <i class="fas fa-check"></i>
+                </button>
+                }
+              </div>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="9" style="padding:0">
+              <app-empty-state icon="users-slash" title="No matching users"
+                subtitle="Try adjusting your search or role filter.">
+              </app-empty-state>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } <!-- end @else loading -->
+  </div>
+
+  <!-- Bulk Action Bar -->
+  <app-bulk-action-bar [selected]="selectedCount()" [actions]="bulkActions" (clear)="clearSelection()">
+  </app-bulk-action-bar>
+
+  <!-- Bottom Panel Grid -->
+  <div class="panels-grid">
+
+    <!-- Role Permissions & Scope Matrix -->
+    <div class="card grid-card permissions-card">
+      <div class="card-header">
+        <h3><i class="fas fa-table"></i> Role Permissions &amp; Data Scope Matrix</h3>
+        <select [value]="matrixRole()" (change)="matrixRole.set($any($event.target).value)">
+          @for (role of availableRoles(); track role) {
+          <option [value]="role">{{ getRoleLabel(role) }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Scope Selector Section -->
+      <div class="scope-selection-box"
+        style="padding: 14px 16px; background: rgba(16, 185, 129, 0.04); border-bottom: 1.5px solid rgba(16, 185, 129, 0.2); display: flex; flex-direction: column; gap: 8px;">
+        <div
+          style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #10b981;">
+          <i class="fas fa-database"></i> Data Scope Dimension for Role: {{ getRoleLabel(matrixRole()) }}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          @for (scopeOpt of (dataScopes || []); track scopeOpt.key) {
+          <div (click)="matrixRole() !== 'admin' && setRoleScope(matrixRole(), scopeOpt.key)"
+            style="padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 4px;"
+            [style.border-color]="getRoleScope(matrixRole()) === scopeOpt.key ? '#10b981' : 'var(--border)'"
+            [style.background]="getRoleScope(matrixRole()) === scopeOpt.key ? '#10b981' : 'var(--card)'"
+            [style.opacity]="matrixRole() === 'admin' && scopeOpt.key !== 'scope_org' ? '0.6' : '1'">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 12px; font-weight: 800;"
+                [style.color]="getRoleScope(matrixRole()) === scopeOpt.key ? '#ffffff' : 'var(--txt)'">{{ scopeOpt.label
+                }}</span>
+              <i class="fas" [class.fa-check-circle]="getRoleScope(matrixRole()) === scopeOpt.key"
+                [class.fa-circle]="getRoleScope(matrixRole()) !== scopeOpt.key"
+                [style.color]="getRoleScope(matrixRole()) === scopeOpt.key ? '#ffffff' : 'var(--txt3)'"
+                style="font-size: 13px;"></i>
+            </div>
+            <span style="font-size: 10.5px; line-height: 1.3;"
+              [style.color]="getRoleScope(matrixRole()) === scopeOpt.key ? 'rgba(255,255,255,0.9)' : 'var(--txt3)'">{{
+              scopeOpt.description }}</span>
+          </div>
+          }
+        </div>
+      </div>
+
+      <div class="matrix-container">
+        <div class="matrix-grid">
+          @for (perm of allPermissions; track perm.key) {
+          <div class="matrix-item" [class.enabled]="isPermissionEnabledForRole(matrixRole(), perm.key)"
+            (click)="toggleRolePermission(matrixRole(), perm.key)">
+            <div class="matrix-check">
+              <i class="fas" [class.fa-check-circle]="isPermissionEnabledForRole(matrixRole(), perm.key)"
+                [class.fa-circle]="!isPermissionEnabledForRole(matrixRole(), perm.key)"></i>
+            </div>
+            <div class="matrix-info">
+              <div class="matrix-label">{{ perm.label }}</div>
+              <div class="matrix-sub">{{ perm.sub }}</div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Audit Log Feed -->
+    <div class="card grid-card">
+      <div class="card-header">
+        <h3><i class="fas fa-history"></i> Audit Log</h3>
+        <button class="btn-outline btn-xs" (click)="loadGeneralData()"><i class="fas fa-sync-alt"></i> Refresh</button>
+      </div>
+      <div class="audit-feed scrollable-feed">
+        @for (log of paginatedAuditLog(); track log.id) {
+        <div class="audit-item">
+          <div class="audit-dot"></div>
+          <div class="audit-details">
+            <div class="audit-text">
+              <strong>{{ log.userEmail || 'System' }}</strong> — {{ log.details || log.action }}
+            </div>
+            <div class="audit-meta">
+              <span><i class="far fa-clock"></i> {{ formatTime(log.createdAt) }}</span>
+              @if (log.ipAddress) {
+              <span><i class="fas fa-laptop-code"></i> {{ log.ipAddress }}</span>
+              }
+            </div>
+          </div>
+          <div class="audit-risk">
+            <span class="badge-action" [class]="getAuditLabelClass(log.action)">
+              {{ log.action.split(' ')[0] }}
+            </span>
+          </div>
+        </div>
+        } @empty {
+        <div class="feed-empty">No security log entries recorded today.</div>
+        }
+      </div>
+      <div class="card-footer pagination-footer"
+        style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px;">
+        <button class="btn-pagination" [disabled]="auditPage() === 1" (click)="auditPage.set(auditPage() - 1)">
+          <i class="fas fa-chevron-left"></i> Prev
+        </button>
+        <span class="pagination-info" style="font-size: 12px; font-weight: 600; color: var(--txt2);">
+          Page {{ auditPage() }} of {{ auditTotalPages() }} ({{ auditLog().length }} total logs)
+        </span>
+        <button class="btn-pagination" [disabled]="auditPage() === auditTotalPages()"
+          (click)="auditPage.set(auditPage() + 1)">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Sessions -->
+    <div class="card grid-card">
+      <div class="card-header">
+        <h3><i class="fas fa-key"></i> Active Sessions</h3>
+        <button class="btn-danger-xs" (click)="killAllSessions()"><i class="fas fa-skull"></i> Kill All</button>
+      </div>
+      <div class="sessions-feed scrollable-feed">
+        @for (session of paginatedSessions(); track session.id) {
+        <div class="session-item">
+          <div class="session-info">
+            <div class="session-user">
+              {{ session.user }}
+              @if (session.current) {
+              <span class="current-tag">You</span>
+              }
+            </div>
+            <div class="session-device"><i class="fas fa-desktop"></i> {{ session.device }}</div>
+            <div class="session-meta">
+              <span>IP: {{ session.ip }}</span>
+              <span>•</span>
+              <span>Location: {{ session.location }}</span>
+            </div>
+          </div>
+          <div class="session-actions">
+            @if (!session.current) {
+            <button class="btn-danger-outline" (click)="killSession(session.id)">Kill</button>
+            }
+          </div>
+        </div>
+        } @empty {
+        <div class="feed-empty">No active session records found.</div>
+        }
+      </div>
+      <div class="card-footer pagination-footer">
+        <button class="btn-pagination" [disabled]="sessionPage() === 1" (click)="sessionPage.set(sessionPage() - 1)">
+          <i class="fas fa-chevron-left"></i> Prev
+        </button>
+        <span class="pagination-info">Page {{ sessionPage() }} of {{ sessionTotalPages() }}</span>
+        <button class="btn-pagination" [disabled]="sessionPage() === sessionTotalPages()"
+          (click)="sessionPage.set(sessionPage() + 1)">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- IP Whitelisting & Login Security -->
+    <div class="card grid-card">
+      <div class="card-header">
+        <h3><i class="fas fa-network-wired"></i> IP Whitelist &amp; Security</h3>
+      </div>
+      <div class="security-panel">
+
+        <!-- Whitelist Listing -->
+        <div class="whitelist-section">
+          <h4>Whitelisted IP Blocks</h4>
+          <div class="whitelist-list">
+            @for (rule of ipWhitelist(); track rule.ip) {
+            <div class="whitelist-item" [class.blocked-rule]="rule.blocked">
+              <div class="rule-status">
+                <span class="status-dot" [class.online]="!rule.blocked" [class.offline]="rule.blocked"></span>
+              </div>
+              <div class="rule-details">
+                <div class="rule-ip">{{ rule.ip }}</div>
+                <div class="rule-label">{{ rule.label || 'Static Rule' }}</div>
+              </div>
+              <button class="btn-delete" (click)="deleteIpRule(rule.ip)"><i class="fas fa-trash-alt"></i></button>
+            </div>
+            } @empty {
+            <div class="feed-empty">No custom whitelists defined. Firm accessible globally.</div>
+            }
+          </div>
+
+          <!-- Add IP Form -->
+          <div class="add-ip-form">
+            <input type="text" placeholder="CIDR (e.g. 10.0.0.0/24)" [value]="newIpAddress()"
+              (input)="newIpAddress.set($any($event.target).value)">
+            <input type="text" placeholder="Label (e.g. Office LAN)" [value]="newIpLabel()"
+              (input)="newIpLabel.set($any($event.target).value)">
+            <div class="checkbox-row">
+              <label><input type="checkbox" [checked]="newIpBlocked()"
+                  (change)="newIpBlocked.set($any($event.target).checked)"> Block Access</label>
+              <button class="btn-xs-primary" (click)="addIpRule()"><i class="fas fa-plus"></i> Add IP</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Security Params -->
+        <div class="security-settings">
+          <h4>Login Security</h4>
+          <div class="setting-item">
+            <label for="force-mfa">Force MFA for all users</label>
+            <select id="force-mfa" [value]="forceMfa() ? 'Enabled' : 'Disabled'"
+              (change)="updateMfaEnabled($any($event.target).value === 'Enabled')">
+              <option value="Enabled">Enabled</option>
+              <option value="Disabled">Disabled</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label for="max-attempts">Max failed attempts</label>
+            <select id="max-attempts" [value]="maxAttempts()" (change)="updateMaxAttempts(+$any($event.target).value)">
+              <option value="3">3 attempts</option>
+              <option value="5">5 attempts</option>
+              <option value="10">10 attempts</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label for="session-timeout">Session timeout</label>
+            <select id="session-timeout" [value]="sessionTimeout()"
+              (change)="updateSessionTimeout($any($event.target).value)">
+              <option value="15 min">15 min</option>
+              <option value="30 min">30 min</option>
+              <option value="1 hr">1 hr</option>
+              <option value="4 hr">4 hr</option>
+              <option value="8 hr">8 hr</option>
+              <option value="24 hr">24 hr</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Invite Team Member -->
+  @if (showInviteForm()) {
+  <div class="modal-overlay" (click)="showInviteForm.set(false)">
+    <div class="modal large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-user-plus"></i> Invite New User</h3>
+        <button class="modal-close" (click)="showInviteForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="fg">
+            <label for="inv-name">FULL NAME *</label>
+            <input id="inv-name" type="text" placeholder="Adv. Full Name" [value]="inviteForm().name"
+              (input)="inviteForm.update(f => ({...f, name: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label for="inv-email">EMAIL *</label>
+            <input id="inv-email" type="email" placeholder="user@tubalaw.com" [value]="inviteForm().email"
+              (input)="inviteForm.update(f => ({...f, email: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label for="inv-password">INITIAL PASSWORD</label>
+            <input id="inv-password" type="password" placeholder="Leave blank for Welcome@123"
+              [value]="inviteForm().password"
+              (input)="inviteForm.update(f => ({...f, password: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label for="inv-mobile">MOBILE</label>
+            <input id="inv-mobile" type="text" placeholder="+91 XXXXX XXXXX" [value]="inviteForm().mobile"
+              (input)="inviteForm.update(f => ({...f, mobile: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label for="inv-designation">DESIGNATION</label>
+            <select id="inv-designation" [value]="inviteForm().designation"
+              (change)="inviteForm.update(f => ({...f, designation: $any($event.target).value}))">
+              @for (d of (masters()?.designations || []); track d) {
+              <option [value]="d">{{ d }}</option>
+              }
+            </select>
+          </div>
+          <div class="fg">
+            <label for="inv-dept">DEPARTMENT</label>
+            <select id="inv-dept" [value]="inviteForm().dept"
+              (change)="inviteForm.update(f => ({...f, dept: $any($event.target).value}))">
+              @for (dept of (masters()?.departments || []); track dept) {
+              <option [value]="dept">{{ dept }}</option>
+              }
+            </select>
+          </div>
+          <div class="fg">
+            <label for="inv-bar">BAR COUNCIL NO.</label>
+            <input id="inv-bar" type="text" placeholder="D/XXX/20XX" [value]="inviteForm().barCouncilNo"
+              (input)="inviteForm.update(f => ({...f, barCouncilNo: $any($event.target).value}))">
+          </div>
+        </div>
+
+        <div class="role-selector-section">
+          <label>ASSIGN ROLE</label>
+          <div class="role-pills">
+            @for (role of availableRoles(); track role) {
+            <button [class.active]="inviteForm().role === role" (click)="inviteForm.update(f => ({...f, role: role}))">
+              {{ getRoleLabel(role) }}
+            </button>
+            }
+          </div>
+        </div>
+
+        <div class="info-alert">
+          <i class="fas fa-info-circle"></i> Password can be entered directly above or defaults to Welcome@123.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showInviteForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="invite()"><i class="fas fa-user-plus"></i> Create User</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal: Edit User Details (Profile, Permissions, Sessions, Activity) -->
+  @if (showEditForm() && selectedUser()) {
+  <div class="modal-overlay" (click)="showEditForm.set(false)">
+    <div class="modal large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-user-edit"></i> Edit — {{ selectedUser()?.name }}</h3>
+        <button class="modal-close" (click)="showEditForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="modal-tabs">
+        <button [class.active]="editTab() === 'profile'" (click)="editTab.set('profile')">Profile</button>
+        <button [class.active]="editTab() === 'sessions'" (click)="editTab.set('sessions')">Sessions</button>
+        <button [class.active]="editTab() === 'activity'" (click)="editTab.set('activity')">Activity</button>
+      </div>
+
+      <div class="modal-body edit-modal-body">
+
+        <!-- TAB: PROFILE -->
+        @if (editTab() === 'profile') {
+        <div class="profile-tab-content">
+          <div class="profile-header-meta">
+            <div class="avatar-large" [style.background]="selectedUser()?.avatar ? 'transparent' : (selectedUser()?.bg || 'var(--primary-soft)')" style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
+              @if (selectedUser()?.avatar) {
+                <img [src]="selectedUser()?.avatar" [alt]="selectedUser()?.name" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+              } @else {
+                {{ selectedUser()?.av || selectedUser()?.name?.substring(0,2)?.toUpperCase() }}
+              }
+            </div>
+            <div class="meta-desc">
+              <h4>{{ selectedUser()?.name }}</h4>
+              <p>{{ selectedUser()?.role }} • {{ selectedUser()?.email }}</p>
+              <label class="btn-outline-xs" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px;">
+                <i class="fas fa-camera"></i> Change Photo
+                <input type="file" accept="image/*" (change)="onUserAvatarChange($event, selectedUser()!)" style="display: none;">
+              </label>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="fg">
+              <label>FULL NAME</label>
+              <input type="text" [value]="editUserForm().name"
+                (input)="editUserForm.update(f => ({...f, name: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>EMAIL</label>
+              <input type="email" [value]="editUserForm().email"
+                (input)="editUserForm.update(f => ({...f, email: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>CHANGE PASSWORD</label>
+              <input type="password" placeholder="Leave empty to keep existing password"
+                [value]="editUserForm().password"
+                (input)="editUserForm.update(f => ({...f, password: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>MOBILE</label>
+              <input type="text" [value]="editUserForm().mobile"
+                (input)="editUserForm.update(f => ({...f, mobile: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>ROLE</label>
+              <select [value]="editUserForm().role"
+                (change)="editUserForm.update(f => ({...f, role: $any($event.target).value}))">
+                @for (role of availableRoles(); track role) {
+                <option [value]="role">{{ getRoleLabel(role) }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>STATUS</label>
+              <select [value]="editUserForm().status"
+                (change)="editUserForm.update(f => ({...f, status: $any($event.target).value}))">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>DEPARTMENT</label>
+              <select [value]="editUserForm().department"
+                (change)="editUserForm.update(f => ({...f, department: $any($event.target).value}))">
+                @for (dept of (masters()?.departments || []); track dept) {
+                <option [value]="dept">{{ dept }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>DESIGNATION</label>
+              <select [value]="editUserForm().designation"
+                (change)="editUserForm.update(f => ({...f, designation: $any($event.target).value}))">
+                @for (dsg of (masters()?.designations || []); track dsg) {
+                <option [value]="dsg">{{ dsg }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- TAB: SESSIONS -->
+        @if (editTab() === 'sessions') {
+        <div class="sessions-tab-content">
+          <h4>Active user sessions</h4>
+          <div class="sessions-list">
+            @for (s of selectedUserSessions(); track s.id) {
+            <div class="session-item">
+              <div class="session-info">
+                <div class="session-device"><strong>{{ s.device }}</strong> @if(s.current){ <span
+                    class="current-tag">Current</span> }</div>
+                <div class="session-meta">
+                  <span>IP: {{ s.ip }}</span> • <span>Started: {{ formatTime(s.started) }}</span>
+                </div>
+              </div>
+              @if (!s.current) {
+              <button class="btn-danger-xs" (click)="killSession(s.id)">Terminate</button>
+              }
+            </div>
+            } @empty {
+            <div class="feed-empty">No active sessions found for this user.</div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- TAB: ACTIVITY -->
+        @if (editTab() === 'activity') {
+        <div class="activity-tab-content">
+          <h4>Audit Logs (User Specific)</h4>
+          <div class="audit-feed scrollable-feed">
+            @for (log of selectedUserAudit(); track log.id) {
+            <div class="audit-item">
+              <div class="audit-dot"></div>
+              <div class="audit-details">
+                <div class="audit-text">{{ log.details || log.action }}</div>
+                <div class="audit-meta">
+                  <span><i class="far fa-clock"></i> {{ formatTime(log.createdAt) }}</span>
+                  <span>IP: {{ log.ipAddress }}</span>
+                </div>
+              </div>
+            </div>
+            } @empty {
+            <div class="feed-empty">No actions logged for this user.</div>
+            }
+          </div>
+        </div>
+        }
+
+      </div>
+      <div class="modal-footer">
+        @if (editTab() === 'profile') {
+        <button class="btn-danger-outline" (click)="confirmSuspend(selectedUser()!, $event)">Suspend</button>
+        <button class="btn-outline" (click)="showEditForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="saveProfile()"><i class="fas fa-save"></i> Save</button>
+        } @else {
+        <button class="btn-primary" (click)="showEditForm.set(false)">Close</button>
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal: Confirm Suspend -->
+  @if (showSuspendConfirm()) {
+  <div class="modal-overlay" (click)="showSuspendConfirm.set(false)">
+    <div class="modal alert-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirm Action</h3>
+        <button class="modal-close" (click)="showSuspendConfirm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body text-center">
+        <i class="fas fa-exclamation-triangle warning-icon text-red"></i>
+        <p>Are you sure you want to suspend <strong>{{ userToSuspend()?.name }}</strong>?</p>
+        <p class="sub-alert text-muted">The user will lose immediate access to the firm database. Active sessions will
+          be terminated.</p>
+      </div>
+      <div class="modal-footer justify-center">
+        <button class="btn-outline" (click)="showSuspendConfirm.set(false)">Cancel</button>
+        <button class="btn-danger" (click)="suspendConfirmed()">Suspend User</button>
+      </div>
+    </div>
+  </div>
+  }
+
+</div>

@@ -1,0 +1,550 @@
+<div class="page" id="documents-page">
+  <!-- Header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-folder"></i> Document Vault</h1>
+      <p class="pg-sub">Digital Case Records & Compliance Repository</p>
+    </div>
+    <div class="pg-actions-group">
+      <!-- Main Category Tabs -->
+      <div class="segmented-control">
+        <button class="seg-btn" [class.active]="activeTab() === 'explorer'" (click)="activeTab.set('explorer')">
+          <i class="fas fa-folder-tree"></i> Explorer
+        </button>
+        <button class="seg-btn" [class.active]="activeTab() === 'recent'" (click)="activeTab.set('recent')">
+          <i class="fas fa-history"></i> Recent Files
+        </button>
+      </div>
+
+      <button class="btn-primary" (click)="openUpload()"><i class="fas fa-cloud-upload-alt"></i> Upload Document</button>
+    </div>
+  </div>
+
+  <!-- Main Grid Layout -->
+  <div class="dms-layout-clean">
+    <!-- Main Explorer Panel -->
+    <div class="dms-main-full">
+      
+      @if (activeTab() === 'explorer') {
+        <!-- Explorer Breadcrumbs -->
+        <div class="breadcrumb-bar">
+          <div class="bc-trail">
+            <span class="bc-item link" (click)="resetPath()"><i class="fas fa-database"></i> Vault Root</span>
+            @for (segment of activePath(); track segment.id; let idx = $index) {
+              <span class="bc-separator">/</span>
+              <span class="bc-item" 
+                    [class.link]="idx < activePath().length - 1"
+                    (click)="navigateToBreadcrumb(idx)">
+                <i class="fas" [class]="segment.type === 'client' ? 'fa-user' : 'fa-folder-open'"></i>
+                {{ segment.name }}
+              </span>
+            }
+          </div>
+          @if (activePath().length > 0) {
+            <button class="btn-xs-outline" (click)="navigateToBreadcrumb(activePath().length - 2)"><i class="fas fa-arrow-up"></i> Up One Level</button>
+          }
+        </div>
+
+        <!-- Toolbar Panel -->
+        <div class="explorer-toolbar card">
+          <div class="tb-left">
+            <!-- Hierarchy toggle (Only visible at root level) -->
+            @if (activePath().length === 0) {
+              <div class="mode-toggle-group">
+                <label class="mode-label">
+                  <input type="radio" name="mode" value="client" [checked]="groupByMode() === 'client'" (change)="groupByMode.set('client')">
+                  <span><i class="fas fa-users"></i> By Client</span>
+                </label>
+                <label class="mode-label">
+                  <input type="radio" name="mode" value="matter" [checked]="groupByMode() === 'matter'" (change)="groupByMode.set('matter')">
+                  <span><i class="fas fa-folder-open"></i> By Matter</span>
+                </label>
+              </div>
+            } @else {
+              <div class="current-level-tag">
+                <i class="fas fa-info-circle"></i> Viewing inside <strong>{{ activePath()[activePath().length - 1].name }}</strong>
+              </div>
+            }
+
+            <!-- Search input -->
+            <div class="search-input-wrap">
+              <i class="fas fa-search"></i>
+              <input type="text" placeholder="Search files/folders…" [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)">
+            </div>
+
+            <!-- Doc Type dropdown filter (Only visible when viewing documents list inside a Matter) -->
+            @if (activePath().length > 0 && activePath()[activePath().length - 1].type === 'matter') {
+              <div class="filter-dropdown">
+                <select [value]="docTypeFilter()" (change)="docTypeFilter.set($any($event.target).value)">
+                  <option value="">-- All Doc Types --</option>
+                  @for (dt of docTypes(); track dt) {
+                    <option [value]="dt">{{ dt }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Hide Empty folders checkbox toggle -->
+            @if (activePath().length === 0 || (activePath().length === 1 && activePath()[0].type === 'client')) {
+              <label class="cb-toggle">
+                <input type="checkbox" [checked]="hideEmptyFolders()" (change)="hideEmptyFolders.set($any($event.target).checked)">
+                <span>Hide empty folders</span>
+              </label>
+            }
+          </div>
+
+          <div class="tb-right">
+            <!-- Sort dropdown -->
+            <div class="sort-selector">
+              <select [value]="sortMode()" (change)="sortMode.set($any($event.target).value)">
+                <option value="name">Sort by Name</option>
+                <option value="count">Sort by File Count</option>
+                <option value="date">Sort by Last Updated</option>
+              </select>
+            </div>
+
+            <!-- Grid vs List layout switchers -->
+            <div class="view-switch">
+              <button class="vw-btn" [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" title="Grid View"><i class="fas fa-th-large"></i></button>
+              <button class="vw-btn" [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')" title="List View"><i class="fas fa-bars"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Document Viewer Body -->
+        <!-- IF WE ARE VIEWING AN ACTIVE MATTER DETAIL (showing documents) -->
+        @if (activePath().length > 0 && activePath()[activePath().length - 1].type === 'matter') {
+          <div class="card" style="padding: 16px;">
+            <div class="explorer-card-header">
+              <h3><i class="fas fa-file-invoice"></i> Matter Documents Checklist</h3>
+            </div>
+
+            @if (viewMode() === 'grid') {
+              <div class="files-grid">
+                @for (file of filteredFiles(); track file.id) {
+                  <div class="file-card" (click)="openDocPreview(file)" style="cursor: pointer;">
+                    <div class="fc-icon"><i class="fas" [class]="file.icon || 'fa-file-pdf'"></i></div>
+                    <div class="fc-info">
+                      <div class="fc-name" [title]="file.name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                      <div class="fc-meta">Type: {{ file.type }}</div>
+                      <div class="fc-date">Uploaded: {{ file.date }}</div>
+                    </div>
+                    <div class="fc-footer">
+                      <span class="badge b-g">{{ file.source }}</span>
+                      <div style="display: flex; gap: 4px;">
+                        <button class="btn-xs btn-outline" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                        @if (auth.hasPermission('delete_matters') && file.id) {
+                          <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2);" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No documents found matching the filter query.</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <!-- List View -->
+              <div class="files-list">
+                @for (file of filteredFiles(); track file.id) {
+                  <div class="file-row" (click)="openDocPreview(file)" style="cursor: pointer;">
+                    <div class="file-info">
+                      <i class="fas file-icon" [class]="file.icon || 'fa-file-pdf'"></i>
+                      <div class="file-details">
+                        <div class="file-name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                        <div class="file-meta">{{ file.type }} • Source: {{ file.source }} • {{ file.date }}</div>
+                      </div>
+                    </div>
+                    <div class="file-badges">
+                      @for (t of file.tags; track t) {
+                        <span class="badge b-t" style="font-size: 10px;">{{ t }}</span>
+                      }
+                      <button class="btn-xs" style="margin-left: 10px;" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                      @if (auth.hasPermission('delete_matters') && file.id) {
+                        <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); margin-left: 4px;" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No documents found matching the filter query.</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- FOLDER GRID/LIST EXPLORER -->
+          <div class="card" style="padding: 16px;">
+            <div class="explorer-card-header">
+              <h3>
+                <i class="fas" [class]="groupByMode() === 'client' ? 'fa-users' : 'fa-folder-open'"></i>
+                {{ activePath().length === 1 ? 'Client\'s Cases' : (groupByMode() === 'client' ? 'Client Workspace Folders' : 'Matter Folders') }}
+              </h3>
+            </div>
+
+            @if (viewMode() === 'grid') {
+              <div class="folders-grid">
+                @for (folder of displayedFolders(); track folder.id) {
+                  <div class="folder-card" 
+                       [class.empty-folder]="isFolderEmpty(folder)" 
+                       (click)="openFolder(folder.type, folder.id, folder.name)">
+                    <div class="fd-icon-box">
+                      <i class="fas" [class]="isFolderEmpty(folder) ? 'fa-folder-open-empty far fa-folder' : 'fa-folder'"></i>
+                    </div>
+                    <div class="fd-info">
+                      <div class="fd-name" [title]="folder.name">{{ folder.name }}</div>
+                      <div class="fd-count">{{ folder.count }} files · Updated {{ folder.lastUpdated }}</div>
+                    </div>
+                    <button class="btn-xs btn-open">Open</button>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No workspaces/folders found matching your selection.</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <!-- List View -->
+              <div class="folders-list">
+                @for (folder of displayedFolders(); track folder.id) {
+                  <div class="folder-row-item" 
+                       [class.empty-folder]="isFolderEmpty(folder)" 
+                       (click)="openFolder(folder.type, folder.id, folder.name)">
+                    <div class="fr-left">
+                      <i class="fas folder-icon-list" [class]="isFolderEmpty(folder) ? 'far fa-folder' : 'fas fa-folder'"></i>
+                      <div>
+                        <div class="fr-name">{{ folder.name }}</div>
+                        <div class="fr-meta">Updated: {{ folder.lastUpdated }}</div>
+                      </div>
+                    </div>
+                    <div class="fr-right">
+                      <span class="badge b-g">{{ folder.count }} files</span>
+                      <button class="btn-xs btn-open">Open</button>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No workspaces/folders found matching your selection.</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          
+          <!-- Client's Direct Documents -->
+          @if (activePath().length === 1 && activePath()[0].type === 'client' && filteredFiles().length > 0) {
+            <div class="card" style="padding: 16px; margin-top: 20px;">
+              <div class="explorer-card-header">
+                <h3><i class="fas fa-file-alt"></i> Client's Direct Documents</h3>
+              </div>
+              @if (viewMode() === 'grid') {
+                <div class="files-grid">
+                  @for (file of filteredFiles(); track file.id) {
+                    <div class="file-card" (click)="openDocPreview(file)" style="cursor: pointer;">
+                      <div class="fc-icon"><i class="fas" [class]="file.icon || 'fa-file-pdf'"></i></div>
+                      <div class="fc-info">
+                        <div class="fc-name" [title]="file.name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                        <div class="fc-meta">Type: {{ file.type }}</div>
+                        <div class="fc-date">Uploaded: {{ file.date }}</div>
+                      </div>
+                      <div class="fc-footer">
+                        <span class="badge b-g">{{ file.source }}</span>
+                        <div style="display: flex; gap: 4px;">
+                          <button class="btn-xs btn-outline" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                          @if (auth.hasPermission('delete_matters') && file.id) {
+                            <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2);" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="files-list">
+                  @for (file of filteredFiles(); track file.id) {
+                    <div class="file-row" (click)="openDocPreview(file)" style="cursor: pointer;">
+                      <div class="file-info">
+                        <i class="fas file-icon" [class]="file.icon || 'fa-file-pdf'"></i>
+                        <div class="file-details">
+                          <div class="file-name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                          <div class="file-meta">{{ file.type }} • Source: {{ file.source }} • {{ file.date }}</div>
+                        </div>
+                      </div>
+                      <div class="file-badges">
+                        @for (t of file.tags; track t) {
+                          <span class="badge b-t" style="font-size: 10px;">{{ t }}</span>
+                        }
+                        <button class="btn-xs" style="margin-left: 10px;" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                        @if (auth.hasPermission('delete_matters') && file.id) {
+                          <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); margin-left: 4px;" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      } @else {
+        <!-- Recent Documents Panel -->
+        <div class="card" style="padding: 16px;">
+          <h3 style="margin-bottom: 16px; font-size: 15px; font-weight: 700;"><i class="fas fa-clock-rotate-left"></i> Recent Documents</h3>
+          <div class="files-list">
+            @for (d of recent(); track d.name) {
+              <div class="doc-item-recent" (click)="openDocPreview(d)" style="cursor: pointer;">
+                <div class="dir-left">
+                  <div class="di-icon" [style.background]="d.bg">
+                    <i class="fas" [class]="d.icon" [style.color]="d.tc"></i>
+                  </div>
+                  <div class="di-body">
+                    <div class="di-name">{{ d.name }}</div>
+                    <div class="di-meta">{{ d.meta }}</div>
+                  </div>
+                </div>
+                <span class="badge" [class]="d.tag">{{ d.label }}</span>
+              </div>
+            } @empty {
+              <div class="empty-explorer">
+                <i class="fas fa-clock"></i>
+                <p>No recent documents found.</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Upload Modal with drag & drop zone -->
+  @if (showUploadModal()) {
+    <div class="modal-overlay" (click)="showUploadModal.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-cloud-upload-alt"></i> SafeUpload Console</h3>
+          <button class="modal-close" (click)="showUploadModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            
+            <!-- Drag and Drop Dropzone -->
+            <div class="fg fg-full">
+              <div class="dropzone-box" 
+                   [class.dragging]="isDragging()" 
+                   (dragover)="onDragOver($event)" 
+                   (dragleave)="onDragLeave($event)" 
+                   (drop)="onDrop($event)"
+                   (click)="fileSelector.click()">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 32px; color: var(--primary); margin-bottom: 8px;"></i>
+                <p class="dropzone-text">Drag and drop file here, or click to choose from system</p>
+                <span class="dropzone-sub">PDF, DOCX, XLSX, images up to 50MB</span>
+                <input type="file" #fileSelector (change)="onFileChange($event)" style="display:none">
+              </div>
+              @if (selectedFile()) {
+                <div class="selected-file-banner">
+                  <i class="fas fa-file-alt"></i>
+                  <span class="file-name-text">{{ selectedFile()?.name }}</span>
+                  <span class="file-size-text">({{ (selectedFile()?.size || 0) / 1024 | number:'1.0-1' }} KB)</span>
+                </div>
+              }
+            </div>
+
+            <!-- Mandatory Classifications -->
+            <div class="fg">
+              <label>Link to Client *</label>
+              <select [value]="uploadForm().clientId" (change)="uploadForm.update(f => ({...f, clientId: $any($event.target).value, matterId: ''}))">
+                <option value="">-- Select Client --</option>
+                @for (c of clientsList(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Link to Case / Matter *</label>
+              <select [value]="uploadForm().matterId" (change)="uploadForm.update(f => ({...f, matterId: $any($event.target).value}))">
+                <option value="" disabled>-- Select Matter --</option>
+                @for (m of uploadMattersFiltered(); track m.id) {
+                  <option [value]="m.id">{{ m.title }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Document Type *</label>
+              <select [value]="uploadForm().docType" (change)="uploadForm.update(f => ({...f, docType: $any($event.target).value}))">
+                @for (dt of docTypes(); track dt) {
+                  <option [value]="dt">{{ dt }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Tags (comma-separated)</label>
+              <input type="text" [value]="uploadForm().tags" (input)="uploadForm.update(f => ({...f, tags: $any($event.target).value}))" placeholder="e.g. Affidavit, Signed, Copy">
+            </div>
+          </div>
+
+          <!-- Upload Progress Indicator -->
+          @if (isUploading()) {
+            <div class="upload-progress-wrapper">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="uploadProgress()"></div>
+              </div>
+              <div class="progress-meta">Uploading & Indexing... {{ uploadProgress() }}%</div>
+            </div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showUploadModal.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="!selectedFile() || !uploadForm().matterId || isUploading()" (click)="performUpload()"><i class="fas fa-cloud-upload"></i> Upload</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+  <!-- Modal: Document Quick Preview (Shared details panel) -->
+  @if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+    <div class="modal-overlay" style="z-index: 1200;" (click)="showPreviewModal.set(false)">
+      <div class="modal" style="width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 12px 20px; background: var(--bg2);">
+          <div>
+            <h3 style="font-size: 14.5px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i> {{ previewDoc.name }}
+            </h3>
+            <span class="badge b-g" style="margin-top: 4px;">{{ previewDoc.type || 'Court Document' }}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn-xs btn-outline" style="padding: 6px 12px; font-size: 11px;" onclick="window.print()">
+              <i class="fas fa-print"></i> Print
+            </button>
+            @if (getPreviewDetails(); as details) {
+              <a [href]="details.rawUrl || '#'" [attr.download]="details.name" target="_blank" class="btn-xs btn-primary" style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" [style.opacity]="details.rawUrl ? '1' : '0.5'" [style.pointer-events]="details.rawUrl ? 'auto' : 'none'">
+                <i class="fas fa-download"></i> Download
+              </a>
+            }
+            @if (auth.hasPermission('delete_matters') && previewDoc.id) {
+              <button class="btn-xs" style="padding: 6px 12px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;" (click)="deleteDoc(previewDoc); showPreviewModal.set(false)">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            }
+            <button class="modal-close" style="position: static; margin-left: 10px;" (click)="showPreviewModal.set(false)"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+
+        <!-- PDF Reader Toolbar Simulation -->
+        <div style="background: #334155; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid #1e293b;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+            <span style="font-weight: 600;">Page 1 of 1</span>
+            <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-minus"></i></button>
+            <span style="font-family: monospace;">100%</span>
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-plus"></i></button>
+            <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; margin-left: 10px;"><i class="fas fa-expand"></i></button>
+          </div>
+          <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+            Source: {{ previewDoc.source || 'Secure Vault' }} | Verified
+          </div>
+        </div>
+
+        <div class="modal-body" style="flex: 1; overflow-y: auto; background: #475569; padding: 24px; display: flex; flex-direction: column; align-items: center; min-height: 480px; gap: 20px;">
+          @if (getPreviewDetails(); as details) {
+            @if (details.isImage) {
+              @if (details.rawUrl) {
+                <img [src]="details.rawUrl" style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;" />
+              } @else {
+                <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                  <i class="fas fa-image" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                  <p style="margin: 0; font-weight: 700;">No preview available for this image.</p>
+                  <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+                </div>
+              }
+            } @else if (details.isPdf) {
+              @if (details.localUrl) {
+                <iframe [src]="details.localUrl" style="width: 100%; height: 75vh; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;"></iframe>
+              } @else {
+                <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                  <i class="fas fa-file-pdf" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                  <p style="margin: 0; font-weight: 700;">No preview available for this PDF.</p>
+                  <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+                </div>
+              }
+            } @else if (details.isTemplateInstance) {
+              <!-- Simulated A4 Legal Page with dynamic data -->
+              <div style="width: 100%; max-width: 620px; min-height: 800px; background: #ffffff; padding: 48px 56px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; flex-direction: column; font-family: 'Times New Roman', Times, serif; color: #1e293b; position: relative; border-radius: 4px; box-sizing: border-box; text-align: left;">
+                <div style="position: absolute; top: 40%; left: 15%; right: 15%; transform: rotate(-30deg); font-size: 48px; font-weight: 800; color: rgba(220, 38, 38, 0.06); text-transform: uppercase; text-align: center; border: 8px double rgba(220, 38, 38, 0.06); padding: 10px; pointer-events: none; font-family: sans-serif; letter-spacing: 2px;">
+                  TUBA SmartCourt<br>Official Copy
+                </div>
+                <div style="text-align: center; border-bottom: 2px double #1e293b; padding-bottom: 12px; margin-bottom: 24px;">
+                  <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">Before the Honorable Court of Jurisdiction</h2>
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">At New Delhi, India</span>
+                </div>
+                <div style="font-size: 12.5px; line-height: 1.6; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; border-radius: 6px;">
+                  <div>
+                    <strong>PETITIONER / PLAINTIFF:</strong><br>
+                    <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.clientName }}</span><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Represented by Lead Counsel</span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 10px;">V / S</div>
+                  <div>
+                    <strong>RESPONDENT / DEFENDANT:</strong><br>
+                    <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.matterTitle }}</span><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Represented by Standing Counsel</span>
+                  </div>
+                </div>
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <h3 style="font-size: 13px; font-weight: 800; text-decoration: underline; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">
+                    SUBMISSIONS ON BEHALF OF THE PETITIONER: {{ details.name }}
+                  </h3>
+                </div>
+                <div style="font-size: 13px; line-height: 1.8; flex: 1; text-align: justify; color: #334155;">
+                  <p style="margin: 0 0 14px 0;"><strong>MOST RESPECTFULLY SHOWETH:</strong></p>
+                  <p style="margin: 0 0 14px 0;">
+                    1. That the present submissions are being filed in support of the petition challenging the arbitrary guidelines and directives issued. The document, specifically identified as <strong>{{ details.name }}</strong>, contains direct reference to input tax logs and verification certificates.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    2. That the file metadata records this as a <strong>{{ details.type || 'Affidavit / Submission' }}</strong> document, filed on date <strong>{{ details.date || '2026-07-14' }}</strong> and processed under standard digital encryption keys.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    3. That the uploader signature certificate belongs to <strong>Adv. Amit Sharma</strong>, who confirms that the contents are scanned, OCR indexed, and validated against conflict records.
+                  </p>
+                  <p style="margin: 0 0 14px 0;">
+                    4. That the Petitioners pray this Honorable Court may be pleased to take the document on record and grant interim relief as requested in the application.
+                  </p>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; border-top: 1.5px solid #cbd5e1; padding-top: 16px;">
+                  <div>
+                    <div style="border: 2.5px solid #dc2626; color: #dc2626; font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 6px 12px; border-radius: 6px; transform: rotate(-8deg); letter-spacing: 0.8px; font-family: sans-serif; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: rgba(220,38,38,0.02); text-align: center; line-height: 1.3;">
+                      COURT RECORDS<br>
+                      <span style="font-size: 8px; font-weight: 500;">DIGITALLY SECURED</span><br>
+                      <span style="font-size: 8.5px; font-weight: 700;">ID: {{ details.id || 'VAULT-991' }}</span>
+                    </div>
+                  </div>
+                  <div style="text-align: right; font-size: 12.5px; color: #0f172a; font-family: sans-serif; line-height: 1.5;">
+                    <span style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 15px; color: #475569; display: block; margin-bottom: 6px;">Amit Sharma</span>
+                    <strong>Advocate for Petitioner</strong><br>
+                    <span style="font-size: 10.5px; color: #64748b;">Bar Council No: D/1049/2018</span>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                <p style="margin: 0; font-weight: 700;">No preview available for this document type.</p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+

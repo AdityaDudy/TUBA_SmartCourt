@@ -1,0 +1,565 @@
+import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { DataService } from '../../../../core/services/data.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { DomSanitizer } from '@angular/platform-browser';
+import { environment } from '../../../../../environments/environment';
+import type { Matter, Task, TaskPriority } from '../../../../core/models';
+
+@Component({
+  selector: 'app-matters-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './matters-page.component.html',
+  styleUrl: './matters-page.component.scss',
+})
+export class MattersPageComponent implements OnInit {
+  ds = inject(DataService);
+  auth = inject(AuthService);
+  toast = inject(ToastService);
+  sanitizer = inject(DomSanitizer);
+  private route = inject(ActivatedRoute);
+
+  matters  = this.ds.matters;
+  loading  = this.ds.mattersLoading;
+  search   = signal('');
+  filter   = signal('All');
+  showForm = signal(false);
+
+  // Pagination
+  currentPage = signal(1);
+  readonly pageSize = 8;
+
+  // Edit states
+  showEditForm = signal(false);
+  selectedMatter = signal<Matter | null>(null);
+  editForm = signal<Partial<Matter>>({});
+  editSubmitted = signal(false);
+
+  // View modal state
+  showViewModal = signal(false);
+  activeDetailTab = signal<'summary' | 'timeline' | 'documents' | 'tasks' | 'finance'>('summary');
+
+  // Creation form state
+  form = signal<Partial<Matter>>({ status: 'Active', type: 'Litigation', priority: 'Medium' });
+  submitted = signal(false);
+
+  // Expanded fields state
+  matterDocuments = signal<any[]>([]);
+  showAddTaskForm = signal(false);
+  taskForm = signal({
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'Medium',
+    assignedTo: ''
+  });
+
+  showUploadModal = signal(false);
+  uploadingDoc = signal(false);
+  uploadForm = signal({
+    docType: 'Petition',
+    tags: ''
+  });
+
+  selectedDocForPreview = signal<any>(null);
+  showPreviewModal = signal(false);
+  matterFinanceRollup = signal<any>(null);
+
+  get isTaskFormValid(): boolean {
+    return !!this.taskForm().title?.trim() && !!this.taskForm().dueDate;
+  }
+
+  // Dynamic dropdowns & filters from Masters
+  types = computed(() => this.ds.masters()?.matterTypes || ['Litigation', 'Arbitration', 'Advisory', 'IBC/NCLT', 'Compliance', 'Tax Matter', 'Consumer', 'Real Estate', 'Criminal']);
+  courts = computed(() => this.ds.masters()?.courts || ['Supreme Court of India', 'Delhi High Court', 'Bombay High Court', 'NCLT Mumbai', 'NCLT Delhi', 'ITAT Delhi', 'District Court']);
+  practiceAreas = computed(() => this.ds.masters()?.practiceAreas || ['Corporate Law', 'Litigation', 'Arbitration', 'Insolvency & Bankruptcy', 'Taxation', 'Real Estate', 'Labour & Employment']);
+  prios = computed(() => this.ds.masters()?.priorities || ['Urgent', 'High', 'Medium', 'Low']);
+  
+  // Sync filters tab with dynamic Priorities set in master
+  filters = computed(() => ['All', ...this.prios()]);
+
+  constructor() {
+    effect(() => {
+      this.search();
+      this.filter();
+      untracked(() => this.currentPage.set(1));
+    });
+  }
+
+  ngOnInit() { 
+    this.ds.loadMatters().subscribe(); 
+    this.ds.loadMasters().subscribe();
+    this.ds.loadClients().subscribe();
+    this.ds.loadUsers().subscribe();
+    this.ds.loadHearings().subscribe();
+    this.ds.loadFilings().subscribe();
+    this.ds.loadTasks().subscribe();
+
+    this.route.paramMap.subscribe((params: any) => {
+      const matId = params.get('matId');
+      if (matId) {
+        this.ds.loadMatters().subscribe((list: any[]) => {
+          const match = (list || this.ds.matters()).find(m => String(m.id) === String(matId));
+          if (match) {
+            this.openViewModal(match);
+          }
+        });
+      }
+    });
+
+    this.route.queryParams.subscribe((params: any) => {
+      if (params['new'] === '1') {
+        this.openAddForm();
+      }
+    });
+  }
+
+  get matterHearings() {
+    const matter = this.selectedMatter();
+    if (!matter) return [];
+    return this.ds.hearings().filter(h => String(h.matterId) === String(matter.id));
+  }
+
+  get matterFilings() {
+    const matter = this.selectedMatter();
+    if (!matter) return [];
+    return this.ds.filings().filter(f => String(f.matterId) === String(matter.id));
+  }
+
+  get matterTasks() {
+    const matter = this.selectedMatter();
+    if (!matter) return [];
+    return this.ds.tasks().filter(t => String(t.matterId) === String(matter.id));
+  }
+
+  get matterTimelineEvents() {
+    const matter = this.selectedMatter();
+    if (!matter) return [];
+    
+    const events: { date: string; type: string; title: string; desc: string }[] = [];
+    
+    // Matter registration event
+    if (matter.filingDate) {
+      events.push({
+        date: matter.filingDate,
+        type: 'Registration',
+        title: 'Matter Registered',
+        desc: 'Case registered with title: "' + matter.title + '" in ' + matter.court
+      });
+    }
+
+    this.matterHearings.forEach(h => {
+      events.push({
+        date: h.hearingDate || '',
+        type: 'Hearing',
+        title: 'Court Hearing: ' + (h.stage || 'Hearing'),
+        desc: 'Scheduled in ' + h.court + ' with ' + h.advocate + '. Time: ' + (h.hearingTime || '—')
+      });
+    });
+
+    this.matterFilings.forEach(f => {
+      events.push({
+        date: f.filedDate || f.dueDate || '',
+        type: 'Filing',
+        title: 'Document Filing: ' + f.title,
+        desc: 'Filing status: ' + f.status + ' (' + (f.filingType || 'Pleading') + '). Filed by ' + f.advocate
+      });
+    });
+
+    // Document upload events
+    this.matterDocuments().forEach(d => {
+      events.push({
+        date: d.date || '',
+        type: 'Document',
+        title: 'Document Uploaded: ' + d.name,
+        desc: 'Document of type ' + d.type + ' uploaded by system.'
+      });
+    });
+
+    // Task events
+    this.matterTasks.forEach(t => {
+      events.push({
+        date: t.dueDate || '',
+        type: 'Task',
+        title: (t.done ? 'Task Completed: ' : 'Task Due: ') + t.title,
+        desc: 'Assigned to: ' + t.assignedTo + '. Priority: ' + t.priority + '. Description: ' + (t.notes || '—')
+      });
+    });
+
+    // Sort descending
+    return events.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  get filtered() {
+    let list = this.matters();
+    if (!this.auth.hasPermission('view_all')) {
+      const currentUserName = this.auth.userName();
+      if (currentUserName) {
+        list = list.filter(m => m.advocate === currentUserName || m.adv === currentUserName);
+      } else {
+        list = [];
+      }
+    }
+    return list
+      .filter(m => this.filter() === 'All' || m.priority === this.filter())
+      .filter(m => !this.search() || m.title?.toLowerCase().includes(this.search().toLowerCase())
+                                  || m.caseNumber?.toLowerCase().includes(this.search().toLowerCase())
+                                  || m.cnrNumber?.toLowerCase().includes(this.search().toLowerCase())
+                                  || m.clientName?.toLowerCase().includes(this.search().toLowerCase()));
+  }
+
+  get paginated() {
+    const list = this.filtered;
+    const startIndex = (this.currentPage() - 1) * this.pageSize;
+    return list.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.filtered.length / this.pageSize) || 1;
+  }
+
+  // Register Form Validations
+  get isTitleValid(): boolean {
+    const title = this.form().title?.trim();
+    return !!title && title.length >= 3 && title.length <= 200;
+  }
+
+  get isClientValid(): boolean {
+    return !!this.form().clientId;
+  }
+
+  get isTypeValid(): boolean {
+    return !!this.form().type;
+  }
+
+  get isCourtValid(): boolean {
+    return !!this.form().court;
+  }
+
+  get isAdvocateValid(): boolean {
+    return !!this.form().advocate;
+  }
+
+  get isCaseNoValid(): boolean {
+    const caseNo = this.form().caseNumber || this.form().caseNo;
+    if (!caseNo) return true; // Optional field
+    return caseNo.trim().length <= 50;
+  }
+
+  get isCnrNoValid(): boolean {
+    const cnr = this.form().cnrNumber;
+    if (!cnr) return true; // Optional field
+    return cnr.trim().length <= 50;
+  }
+
+  get isOppositePartyValid(): boolean {
+    const op = this.form().oppositeParty;
+    if (!op) return true; // Optional field
+    return op.trim().length <= 100;
+  }
+
+  get isBgValid(): boolean {
+    const bg = this.form().bg;
+    if (!bg) return true; // Optional field
+    return bg.trim().length <= 1000;
+  }
+
+  get isFormValid(): boolean {
+    return this.isTitleValid && this.isClientValid && this.isTypeValid && this.isCourtValid && this.isAdvocateValid && this.isCaseNoValid && this.isCnrNoValid && this.isOppositePartyValid && this.isBgValid;
+  }
+
+  // Edit Form Validations
+  get isEditTitleValid(): boolean {
+    const title = this.editForm().title?.trim();
+    return !!title && title.length >= 3 && title.length <= 200;
+  }
+
+  get isEditClientValid(): boolean {
+    return !!this.editForm().clientId;
+  }
+
+  get isEditTypeValid(): boolean {
+    return !!this.editForm().type;
+  }
+
+  get isEditCourtValid(): boolean {
+    return !!this.editForm().court;
+  }
+
+  get isEditAdvocateValid(): boolean {
+    return !!this.editForm().advocate;
+  }
+
+  get isEditCaseNoValid(): boolean {
+    const caseNo = this.editForm().caseNumber || this.editForm().caseNo;
+    if (!caseNo) return true; // Optional field
+    return caseNo.trim().length <= 50;
+  }
+
+  get isEditCnrNoValid(): boolean {
+    const cnr = this.editForm().cnrNumber;
+    if (!cnr) return true; // Optional field
+    return cnr.trim().length <= 50;
+  }
+
+  get isEditOppositePartyValid(): boolean {
+    const op = this.editForm().oppositeParty;
+    if (!op) return true; // Optional field
+    return op.trim().length <= 100;
+  }
+
+  get isEditBgValid(): boolean {
+    const bg = this.editForm().bg;
+    if (!bg) return true; // Optional field
+    return bg.trim().length <= 1000;
+  }
+
+  get isEditFormValid(): boolean {
+    return this.isEditTitleValid && this.isEditClientValid && this.isEditTypeValid && this.isEditCourtValid && this.isEditAdvocateValid && this.isEditCaseNoValid && this.isEditCnrNoValid && this.isEditOppositePartyValid && this.isEditBgValid;
+  }
+
+  loadMatterDocs(matterId: string) {
+    this.ds.getMatterFolderContents(matterId).subscribe({
+      next: (docs) => {
+        this.matterDocuments.set(docs);
+      }
+    });
+  }
+
+  openAddForm() {
+    const defaultType = this.types()[0] || 'Litigation';
+    const defaultCourt = this.courts()[0] || 'Supreme Court of India';
+    const defaultPrio = this.prios()[0] || 'Medium';
+    const firstClient = this.ds.clients()[0];
+    const firstUser = this.ds.users()[0];
+
+    this.form.set({ 
+      title: '',
+      caseNumber: '',
+      cnrNumber: '',
+      clientId: firstClient ? Number(firstClient.id) : undefined,
+      clientName: firstClient ? firstClient.name : '',
+      type: defaultType, 
+      court: defaultCourt,
+      priority: defaultPrio,
+      advocate: firstUser ? firstUser.name : '',
+      oppositeParty: '',
+      bg: '',
+      status: 'Active',
+      coCounsel: '',
+      opposingCounsel: '',
+      limitationDeadline: '',
+      relatedMatterId: undefined
+    });
+    this.submitted.set(false);
+    this.showForm.set(true);
+  }
+
+  onClientChange(clientIdStr: string, isEdit: boolean) {
+    const clientId = Number(clientIdStr);
+    const clientObj = this.ds.clients().find(c => Number(c.id) === clientId);
+    if (!clientObj) return;
+
+    if (isEdit) {
+      this.editForm.update(f => ({ ...f, clientId, clientName: clientObj.name }));
+    } else {
+      this.form.update(f => ({ ...f, clientId, clientName: clientObj.name }));
+    }
+  }
+
+  save() {
+    this.submitted.set(true);
+    if (!this.isFormValid) return;
+
+    // Map frontend caseNumber to caseNo for backend mapping compatibility
+    const payload: Partial<Matter> = { 
+      ...this.form(), 
+      caseNo: this.form().caseNumber,
+      cnrNumber: this.form().cnrNumber || undefined,
+      relatedMatterId: (this.form().relatedMatterId && this.form().relatedMatterId !== '') ? String(this.form().relatedMatterId) : undefined
+    };
+
+    this.ds.createMatter(payload).subscribe(() => {
+      this.showForm.set(false);
+      this.submitted.set(false);
+    });
+  }
+
+  openViewModal(matter: Matter) {
+    this.selectedMatter.set(matter);
+    this.activeDetailTab.set('summary');
+    this.showViewModal.set(true);
+    this.loadMatterDocs(matter.id);
+    this.ds.getMatterRollup(Number(matter.id)).subscribe(res => {
+      this.matterFinanceRollup.set(res);
+    });
+  }
+
+  openEditModal(matter: Matter) {
+    this.selectedMatter.set(matter);
+    this.editForm.set({ 
+      ...matter,
+      cnrNumber: matter.cnrNumber || '',
+      clientId: matter.clientId ? Number(matter.clientId) : undefined,
+      relatedMatterId: matter.relatedMatterId ? String(matter.relatedMatterId) : undefined
+    });
+    this.editSubmitted.set(false);
+    this.showEditForm.set(true);
+    this.showViewModal.set(false);
+  }
+
+  update() {
+    const matter = this.selectedMatter();
+    if (!matter) return;
+
+    this.editSubmitted.set(true);
+    if (!this.isEditFormValid) return;
+
+    const payload: Partial<Matter> = { 
+      ...this.editForm(), 
+      caseNo: this.editForm().caseNumber,
+      cnrNumber: this.editForm().cnrNumber || undefined,
+      relatedMatterId: (this.editForm().relatedMatterId && this.editForm().relatedMatterId !== '') ? String(this.editForm().relatedMatterId) : undefined
+    };
+
+    this.ds.updateMatter(matter.id, payload).subscribe(() => {
+      this.showEditForm.set(false);
+      this.editSubmitted.set(false);
+      this.selectedMatter.set(null);
+    });
+  }
+
+  deleteMatter(id: string) {
+    if (confirm('Are you sure you want to delete this matter?')) {
+      this.ds.deleteMatter(id).subscribe();
+    }
+  }
+
+  onMatterFileUpload(event: Event) {
+    const matter = this.selectedMatter();
+    if (!matter) return;
+
+    const target = event.target as HTMLInputElement;
+    const file = target?.files?.[0];
+    if (!file) return;
+
+    this.ds.storeLocalUrl(file.name, file);
+    this.uploadingDoc.set(true);
+    this.ds.uploadMatterDocument(
+      matter.id,
+      file,
+      this.uploadForm().docType,
+      this.uploadForm().tags
+    ).subscribe({
+      next: () => {
+        this.uploadingDoc.set(false);
+        this.showUploadModal.set(false);
+        this.loadMatterDocs(matter.id);
+      },
+      error: () => {
+        this.uploadingDoc.set(false);
+      }
+    });
+  }
+
+  saveTask() {
+    const matter = this.selectedMatter();
+    if (!matter) return;
+
+    if (!this.isTaskFormValid) return;
+
+    const payload: Partial<Task> = {
+      title: this.taskForm().title,
+      notes: this.taskForm().description,
+      dueDate: this.taskForm().dueDate,
+      due: this.taskForm().dueDate,
+      priority: this.taskForm().priority as TaskPriority,
+      assignedTo: this.taskForm().assignedTo,
+      assign: this.taskForm().assignedTo,
+      matterId: Number(matter.id),
+      matterTitle: matter.title,
+      done: false,
+      status: 'To Do'
+    };
+
+    this.ds.createTask(payload).subscribe({
+      next: () => {
+        this.showAddTaskForm.set(false);
+        this.taskForm.set({
+          title: '',
+          description: '',
+          dueDate: '',
+          priority: 'Medium',
+          assignedTo: this.ds.users()[0]?.name || ''
+        });
+        this.toast.success('Task created successfully!');
+        this.ds.loadTasks().subscribe();
+      }
+    });
+  }
+
+  getPreviewDetails = computed(() => {
+    const doc = this.selectedDocForPreview();
+    if (!doc) return null;
+
+    let rawUrl: string | null = null;
+    if (doc.s3Url) {
+      const apiBase = environment.apiBaseUrl.replace('/api', '');
+      if (doc.s3Url.startsWith('/uploads/')) {
+        rawUrl = `${apiBase}${doc.s3Url}`;
+      } else if (doc.s3Url.startsWith('http')) {
+        rawUrl = doc.s3Url.replace(/http:\/\/localhost:\d+/, apiBase);
+      }
+    }
+
+    if (!rawUrl) {
+      const localBlobUrl = this.ds.getLocalUrl(doc.name);
+      if (localBlobUrl) {
+        rawUrl = localBlobUrl;
+      }
+    }
+
+    const localUrl = rawUrl ? this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl) : null;
+    
+    const matter = this.selectedMatter();
+    const clientName = matter?.clientName || doc.clientName || 'No Client';
+    const matterTitle = matter?.title || 'Unlinked Matter';
+    
+    const urlToParse = doc.s3Url || doc.name || '';
+    const ext = urlToParse.split('.').pop()?.toLowerCase() || '';
+    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext);
+    const isPdf = ext === 'pdf';
+    const isTemplateInstance = !rawUrl && !isImage && !isPdf;
+    
+    return {
+      ...doc,
+      localUrl,
+      rawUrl,
+      clientName,
+      matterTitle,
+      isImage,
+      isPdf,
+      isTemplateInstance
+    };
+  });
+
+  openDocPreview(doc: any) {
+    this.selectedDocForPreview.set(doc);
+    this.showPreviewModal.set(true);
+  }
+
+  getRelatedMatter(id: any) {
+    if (!id) return null;
+    return this.ds.matters().find(m => String(m.id) === String(id));
+  }
+
+  fmtPrecise(n?: number) {
+    if (n === undefined || n === null) return '₹0.00';
+    return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}

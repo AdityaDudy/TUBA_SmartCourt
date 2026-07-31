@@ -1,0 +1,388 @@
+<div class="page" id="reports-page">
+  <!-- ── TOP GLOBAL FILTER BAR ─────────────────────────────────────── -->
+  <div class="pg-header flex-column md-flex-row">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-chart-pie"></i> Reports &amp; Analytics</h1>
+      <p class="pg-sub">Aggregate data, monitor metrics, export reports, and schedule recurring audits.</p>
+    </div>
+    
+    <div class="filter-bar">
+      <!-- FY Selector -->
+      <div class="filter-item">
+        <label>Financial Year</label>
+        <select [value]="fy()" (change)="fy.set($any($event.target).value); loadData()">
+          <option value="2026">FY 2026 (AMJ-JFM)</option>
+          <option value="2025">FY 2025 (AMJ-JFM)</option>
+          <option value="2024">FY 2024 (AMJ-JFM)</option>
+        </select>
+      </div>
+
+      <!-- Practice Area Selector -->
+      <div class="filter-item">
+        <label>Practice Area</label>
+        <select [value]="practiceArea()" (change)="practiceArea.set($any($event.target).value); loadData()">
+          <option value="">-- All Areas --</option>
+          @for (area of availablePracticeAreas(); track area) {
+            <option [value]="area">{{ area }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Court Selector -->
+      <div class="filter-item">
+        <label>Court</label>
+        <select [value]="court()" (change)="court.set($any($event.target).value); loadData()">
+          <option value="">-- All Courts --</option>
+          @for (c of availableCourts(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Advocate Selector -->
+      <div class="filter-item">
+        <label>Advocate</label>
+        <select [value]="advocate()" (change)="advocate.set($any($event.target).value); loadData()">
+          <option value="">-- All Advocates --</option>
+          @for (adv of availableAdvocates(); track adv) {
+            <option [value]="adv">{{ adv }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- SKELETON LOADER WHILE REQUEST RUNS -->
+  @if (loading() && !summaryData()) {
+    <div class="reports-skeleton">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-large"></div>
+    </div>
+  }
+
+  <!-- REPORTS MAIN DASHBOARD -->
+  @if (summaryData(); as data) {
+    <div class="report-dashboard">
+      <!-- ── KPI CARDS ROW (CLICKABLE DRILLDOWN) ───────────────────────── -->
+      <div class="kpis-grid">
+        <!-- Total Matters -->
+        <div class="kpi-card hover-lift" (click)="drilldown('matters')">
+          <div class="kpi-left">
+            <span class="kpi-lbl">Total Matters FY</span>
+            <div class="kpi-val">{{ data.totalMatters }}</div>
+            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +6% vs Last FY</span>
+          </div>
+          <div class="kpi-sparkline">
+            <svg viewBox="0 0 100 30" class="sparkline-svg">
+              <polyline fill="none" stroke="var(--blue)" stroke-width="2" points="0,20 15,15 30,22 45,18 60,25 80,10 100,5" />
+            </svg>
+            <div class="kpi-icon-overlay"><i class="fas fa-briefcase"></i></div>
+          </div>
+        </div>
+
+        <!-- Win Rate -->
+        <div class="kpi-card hover-lift" (click)="drilldown('winrate')">
+          <div class="kpi-left">
+            <span class="kpi-lbl">Win Rate</span>
+            <div class="kpi-val">{{ data.winRate }}%</div>
+            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +4% vs Last Year</span>
+          </div>
+          <div class="kpi-sparkline">
+            <svg viewBox="0 0 100 30" class="sparkline-svg">
+              <polyline fill="none" stroke="var(--g1)" stroke-width="2" points="0,25 15,22 30,20 45,15 60,18 80,10 100,2" />
+            </svg>
+            <div class="kpi-icon-overlay"><i class="fas fa-trophy"></i></div>
+          </div>
+        </div>
+
+        <!-- Collected Revenue -->
+        <div class="kpi-card hover-lift" (click)="drilldown('revenue')">
+          <div class="kpi-left">
+            <span class="kpi-lbl">Revenue FY</span>
+            <div class="kpi-val">{{ fmtRevenue(data.revenue) }}</div>
+            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +22% vs Last FY</span>
+          </div>
+          <div class="kpi-sparkline">
+            <svg viewBox="0 0 100 30" class="sparkline-svg">
+              <polyline fill="none" stroke="var(--amber)" stroke-width="2" points="0,28 15,24 30,20 45,15 60,10 80,8 100,2" />
+            </svg>
+            <div class="kpi-icon-overlay"><i class="fas fa-indian-rupee-sign"></i></div>
+          </div>
+        </div>
+
+        <!-- Active Clients -->
+        <div class="kpi-card hover-lift" (click)="drilldown('clients')">
+          <div class="kpi-left">
+            <span class="kpi-lbl">Clients</span>
+            <div class="kpi-val">{{ data.clients }}</div>
+            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +14 new</span>
+          </div>
+          <div class="kpi-sparkline">
+            <svg viewBox="0 0 100 30" class="sparkline-svg">
+              <polyline fill="none" stroke="var(--purple)" stroke-width="2" points="0,25 15,20 30,15 45,18 60,12 80,10 100,5" />
+            </svg>
+            <div class="kpi-icon-overlay"><i class="fas fa-users"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MIDDLE SECTION: CHART & EXPORTS ──────────────────────────── -->
+      <div class="dashboard-row grid-2-1">
+        <!-- INTERACTIVE HEARINGS CHART -->
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h4><i class="fas fa-calendar-alt"></i> Monthly Hearings</h4>
+            <div class="view-toggles chart-granularity">
+              <button [class.active]="chartGranularity() === 'monthly'" (click)="chartGranularity.set('monthly')">Monthly</button>
+              <button [class.active]="chartGranularity() === 'quarterly'" (click)="chartGranularity.set('quarterly')">Quarterly</button>
+            </div>
+          </div>
+
+          <div class="hearings-chart">
+            @if (chartGranularity() === 'monthly') {
+              @for (item of data.monthlyHearings; track item.label) {
+                <div class="hc-col" (click)="drillToHearings(item.label)">
+                  <div class="hc-bar-wrap tooltip-trigger">
+                    <div class="hc-bar" [style.height.%]="(item.count / 15) * 100">
+                      <div class="bar-tooltip"><strong>{{ item.count }}</strong> hearings in {{ item.label }}</div>
+                    </div>
+                  </div>
+                  <span class="hc-lbl">{{ item.label }}</span>
+                  <span class="hc-count">{{ item.count }}</span>
+                </div>
+              }
+            } @else {
+              @for (item of data.quarterlyHearings; track item.label) {
+                <div class="hc-col" (click)="drillToHearings(item.label)">
+                  <div class="hc-bar-wrap tooltip-trigger">
+                    <div class="hc-bar q-bar" [style.height.%]="(item.count / 30) * 100">
+                      <div class="bar-tooltip"><strong>{{ item.count }}</strong> hearings in {{ item.label }}</div>
+                    </div>
+                  </div>
+                  <span class="hc-lbl">{{ item.label }}</span>
+                  <span class="hc-count">{{ item.count }}</span>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- ON-DEMAND & SCHEDULED EXPORTS -->
+        <div class="card exports-card">
+          <div class="card-header">
+            <h4><i class="fas fa-file-export"></i> Export Firm Reports</h4>
+          </div>
+          <div class="exports-list">
+            <!-- Court-wise Report -->
+            <div class="export-row">
+              <div class="exp-info">
+                <span class="exp-title">Court-wise Performance Report</span>
+                <span class="exp-desc">Aggregated matter progress and win status categorized by courts.</span>
+              </div>
+              <div class="exp-actions">
+                <button class="btn-xs btn-outline" (click)="exportReport('Court-wise Performance', 'pdf')">PDF</button>
+                <button class="btn-xs btn-outline" (click)="exportReport('Court-wise Performance', 'xlsx')">Excel</button>
+                <button class="btn-icon btn-schedule" (click)="openSchedule('Court-wise Performance')" title="Schedule Report"><i class="fas fa-clock"></i></button>
+              </div>
+            </div>
+
+            <!-- Advocate Workload -->
+            <div class="export-row">
+              <div class="exp-info">
+                <span class="exp-title">Advocate Workload Comparison</span>
+                <span class="exp-desc">Performance ratings, billings, and caseload per advocate.</span>
+              </div>
+              <div class="exp-actions">
+                <button class="btn-xs btn-outline" (click)="exportReport('Advocate Workload', 'pdf')">PDF</button>
+                <button class="btn-xs btn-outline" (click)="exportReport('Advocate Workload', 'xlsx')">Excel</button>
+                <button class="btn-icon btn-schedule" (click)="openSchedule('Advocate Workload')" title="Schedule Report"><i class="fas fa-clock"></i></button>
+              </div>
+            </div>
+
+            <!-- Revenue Analysis -->
+            <div class="export-row">
+              <div class="exp-info">
+                <span class="exp-title">Revenue &amp; Invoice Analysis</span>
+                <span class="exp-desc">Overview of outstanding balances, payments, and financial audits.</span>
+              </div>
+              <div class="exp-actions">
+                <button class="btn-xs btn-outline" (click)="exportReport('Revenue & Invoice Analysis', 'pdf')">PDF</button>
+                <button class="btn-xs btn-outline" (click)="exportReport('Revenue & Invoice Analysis', 'xlsx')">Excel</button>
+                <button class="btn-icon btn-schedule" (click)="openSchedule('Revenue & Invoice Analysis')" title="Schedule Report"><i class="fas fa-clock"></i></button>
+              </div>
+            </div>
+
+            <!-- Matter Ageing -->
+            <div class="export-row">
+              <div class="exp-info">
+                <span class="exp-title">Matter Ageing &amp; Deadlines</span>
+                <span class="exp-desc">Lists days pending in stage and compliance milestones.</span>
+              </div>
+              <div class="exp-actions">
+                <button class="btn-xs btn-outline" (click)="exportReport('Matter Ageing & Deadlines', 'pdf')">PDF</button>
+                <button class="btn-xs btn-outline" (click)="exportReport('Matter Ageing & Deadlines', 'xlsx')">Excel</button>
+                <button class="btn-icon btn-schedule" (click)="openSchedule('Matter Ageing & Deadlines')" title="Schedule Report"><i class="fas fa-clock"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LOWER GRID: FUNNEL pipeline & DONUT composition ────────────── -->
+      <div class="dashboard-row grid-2">
+        <!-- PIPELINE FUNNEL (Matters by Stage) -->
+        <div class="card funnel-card">
+          <div class="card-header">
+            <h4><i class="fas fa-filter"></i> Matters by Stage (Pipeline Funnel)</h4>
+          </div>
+          <div class="funnel-container">
+            @for (stage of data.funnel; track stage.stage; let i = $index) {
+              <div class="funnel-tier">
+                <span class="tier-lbl">{{ stage.stage }}</span>
+                <div class="tier-bar-wrap">
+                  <div class="tier-bar" [style.width.%]="(stage.count / maxFunnelCount()) * 100">
+                    <span class="tier-val">{{ stage.count }} {{ stage.count === 1 ? 'Matter' : 'Matters' }}</span>
+                  </div>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-chart-cell">No pipeline data matches current filters.</div>
+            }
+          </div>
+        </div>
+
+        <!-- PORTFOLIO DONUT (Matters by Practice Area) -->
+        <div class="card donut-card">
+          <div class="card-header">
+            <h4><i class="fas fa-chart-pie"></i> Matters by Practice Area</h4>
+          </div>
+          <div class="donut-container">
+            <div class="donut-mock">
+              <!-- Inline SVG ring composition resembling a donut chart -->
+              <svg viewBox="0 0 100 100" class="donut-svg">
+                <circle cx="50" cy="50" r="35" fill="transparent" stroke="var(--bg3)" stroke-width="12" />
+                @for (area of data.donut; track area.area; let idx = $index) {
+                  <!-- Create stylized segmented colored borders based on counts -->
+                  <circle cx="50" cy="50" r="35" fill="transparent"
+                          [attr.stroke]="getAreaColor(idx)"
+                          stroke-width="12"
+                          [attr.stroke-dasharray]="(area.count / data.totalMatters * 220) + ' 220'"
+                          [attr.stroke-dashoffset]="-(idx * (220 / (data.donut.length || 1)))" />
+                }
+              </svg>
+              <div class="donut-center">
+                <span class="center-val">{{ data.totalMatters }}</span>
+                <span class="center-lbl">matters</span>
+              </div>
+            </div>
+            
+            <div class="donut-legend">
+              @for (area of data.donut; track area.area; let idx = $index) {
+                <div class="legend-item">
+                  <span class="legend-dot" [style.background]="getAreaColor(idx)"></span>
+                  <span class="legend-txt">{{ area.area }}</span>
+                  <span class="legend-val">{{ area.count }} ({{ (area.count / (data.totalMatters || 1) * 100).toFixed(0) }}%)</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ADVOCATE PERFORMANCE COMPARISON BAR CHART ──────────────────── -->
+      <div class="card advocate-perf-card">
+        <div class="card-header">
+          <h4><i class="fas fa-gavel"></i> Advocate Workload &amp; Performance Comparison</h4>
+        </div>
+        <div class="adv-grid">
+          @for (adv of data.advocatePerformance; track adv.advocate) {
+            <div class="adv-perf-row">
+              <div class="adv-perf-info">
+                <span class="adv-name"><i class="fas fa-user-tie"></i> {{ adv.advocate }}</span>
+                <span class="adv-matters-count">{{ adv.mattersCount }} Active Cases</span>
+              </div>
+              
+              <!-- Metrics bars stack -->
+              <div class="adv-bars-stack">
+                <!-- Cases count bar -->
+                <div class="adv-metric-row">
+                  <span class="metric-lbl">Matters Managed</span>
+                  <div class="metric-progress-wrap">
+                    <div class="metric-progress bar-blue" [style.width.%]="(adv.mattersCount / 10) * 100"></div>
+                  </div>
+                  <span class="metric-val">{{ adv.mattersCount }}</span>
+                </div>
+
+                <!-- Win rate bar -->
+                <div class="adv-metric-row">
+                  <span class="metric-lbl">Win Rate</span>
+                  <div class="metric-progress-wrap">
+                    <div class="metric-progress bar-green" [style.width.%]="adv.winRate"></div>
+                  </div>
+                  <span class="metric-val">{{ adv.winRate }}%</span>
+                </div>
+
+                <!-- Revenue bar -->
+                <div class="adv-metric-row">
+                  <span class="metric-lbl">Revenue Raised</span>
+                  <div class="metric-progress-wrap">
+                    <div class="metric-progress bar-amber" [style.width.%]="(adv.revenue / 200000) * 100"></div>
+                  </div>
+                  <span class="metric-val">{{ fmtRevenue(adv.revenue) }}</span>
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty-chart-cell">No advocate performance comparison matching current filters.</div>
+          }
+        </div>
+      </div>
+
+    </div>
+  }
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: SCHEDULE REPORT RECURRING DELIVERY                   -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showScheduleModal()) {
+  <div class="modal-overlay" (click)="showScheduleModal.set(false)">
+    <div class="modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-clock"></i> Schedule Recurring Report</h3>
+        <button class="modal-close" (click)="showScheduleModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); margin-bottom: 16px;">
+          <div style="font-size:12px; color:var(--txt3);">REPORT TYPE</div>
+          <div style="font-size: 16px; font-weight:800; color:var(--txt);">{{ selectedReportType() }}</div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Recipient Email -->
+          <div class="fg fg-full">
+            <label>Recipient Email Address *</label>
+            <input type="email" [value]="scheduleEmail()" (input)="scheduleEmail.set($any($event.target).value)" placeholder="e.g. advocate@smartcourt.law">
+          </div>
+
+          <!-- Frequency Selector -->
+          <div class="fg fg-full">
+            <label>Delivery Schedule *</label>
+            <select [value]="scheduleFreq()" (change)="scheduleFreq.set($any($event.target).value)">
+              <option value="Daily">Every Morning (Daily)</option>
+              <option value="Weekly">Every Monday (Weekly)</option>
+              <option value="Monthly">1st Day of the Month (Monthly)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showScheduleModal.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="saveSchedule()"><i class="fas fa-check"></i> Set Schedule</button>
+      </div>
+    </div>
+  </div>
+}

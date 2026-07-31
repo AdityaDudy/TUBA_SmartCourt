@@ -1,0 +1,77 @@
+// ============================================================
+//  TUBA SmartCourt — CourtOS
+//  Global SCSS Variables (Design Tokens)
+// ============================================================
+
+// --- Green Brand ---
+$g1: #0d6637;
+$g2: #16a34a;
+$g3: #22c55e;
+$g-soft: #dcfce7;
+$g-mid: #bbf7d0;
+
+// --- Amber Accent ---
+$acc: #d97706;
+$acc-soft: #fef3c7;
+$acc-mid: #fde68a;
+
+// --- Semantic ---
+$red: #dc2626;
+$red-soft: #fee2e2;
+$blue: #1d4ed8;
+$blue-soft: #dbeafe;
+$purple: #7c3aed;
+$purple-soft: #ede9fe;
+$teal: #0f766e;
+$teal-soft: #ccfbf1;
+
+// --- Text ---
+$txt: #0f172a;
+$txt2: #475569;
+$txt3: #94a3b8;
+
+// --- Backgrounds ---
+$bg: #f0fdf4;
+$bgc: #ffffff;
+$bgs: #f8fafb;
+
+// --- Borders ---
+$bdr: #e2e8f0;
+$bdr2: #cbd5e1;
+
+// --- Sidebar ---
+$sb: #1e3a5f;
+
+// --- Border Radius ---
+$r: 10px;
+$rl: 14px;
+
+// --- Shadows ---
+$sh: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
+$shm: 0 4px 16px rgba(0, 0, 0, 0.1);
+$shl: 0 8px 32px rgba(0, 0, 0, 0.14);
+
+// --- Layout ---
+$sidebar-width: 248px;
+$topbar-height: 60px;
+
+// --- Typography ---
+$font: 'Inter', system-ui, sans-serif;
+$mono: 'JetBrains Mono', monospace;
+
+// --- Transitions ---
+$tr: all 0.15s ease;
+$tr-slow: all 0.25s ease;
+
+// --- Z-indices ---
+$z-sidebar: 200;
+$z-topbar: 100;
+$z-modal: 800;
+$z-toast: 9999;
+$z-login: 9999;
+
+// --- Breakpoints ---
+$bp-sm: 640px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;

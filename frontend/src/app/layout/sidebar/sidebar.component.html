@@ -1,0 +1,67 @@
+<nav class="sidebar" [class.collapsed]="collapsed">
+  <!-- Brand -->
+  <div class="sb-brand">
+    <div class="sb-brand-icon">⚖</div>
+    @if (!collapsed) {
+      <div class="sb-brand-text">
+        <div class="sb-brand-name">SmartCourt</div>
+        <div class="sb-brand-sub">CourtOS v1.0</div>
+      </div>
+    }
+    <button class="sb-toggle" (click)="toggleCollapse.emit()" [title]="collapsed ? 'Expand' : 'Collapse'">
+      <i class="fas" [class.fa-chevron-left]="!collapsed" [class.fa-chevron-right]="collapsed"></i>
+    </button>
+  </div>
+
+  <!-- Nav -->
+  <div class="sb-nav">
+    @for (section of navSections; track section.title) {
+      @if (!collapsed) {
+        <div class="sb-section-title">{{ section.title }}</div>
+      }
+      @for (item of section.items; track item.route) {
+        @if (!item.permission || auth.hasPermission(item.permission)) {
+          <a class="sb-item" [routerLink]="item.route"
+             routerLinkActive="active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+             [title]="collapsed ? item.label : ''"
+             [attr.aria-label]="item.label">
+            <i class="fas sb-icon" [class]="item.icon"></i>
+            @if (!collapsed) {
+              <span class="sb-label">{{ item.label }}</span>
+              @if (item.badge && item.badge > 0) {
+                <span class="sb-badge">{{ item.badge }}</span>
+              }
+            }
+            <!-- Tooltip shown only when collapsed -->
+            @if (collapsed) {
+              <span class="sb-tooltip">{{ item.label }}</span>
+            }
+          </a>
+        }
+      }
+    }
+  </div>
+
+
+  <!-- User footer -->
+  <div class="sb-footer">
+    <div class="sb-user" [title]="auth.userName()">
+      <div class="sb-av" [style.background]="auth.userAvatar() ? 'transparent' : auth.userGradient()" style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        @if (auth.userAvatar()) {
+          <img [src]="auth.userAvatar()" alt="User" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+        } @else {
+          {{ auth.userInitials() }}
+        }
+      </div>
+      @if (!collapsed) {
+        <div class="sb-user-info">
+          <div class="sb-user-name">{{ auth.userName() }}</div>
+          <div class="sb-user-role">{{ auth.userRole() }}</div>
+        </div>
+        <button class="sb-logout" (click)="logout()" title="Logout">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      }
+    </div>
+  </div>
+</nav>

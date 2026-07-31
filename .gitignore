@@ -1,0 +1,18 @@
+# Backend
+backend/target/
+backend/data/
+backend/.mvn/
+uploads/
+*.class
+*.jar
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Misc
+.idea/
+.vscode/
+.DS_Store
+*.log

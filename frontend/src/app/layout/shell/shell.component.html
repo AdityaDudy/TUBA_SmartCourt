@@ -1,0 +1,13 @@
+<div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <app-sidebar [collapsed]="sidebarCollapsed()" (toggleCollapse)="toggleSidebar()" />
+  <div class="shell-main">
+    <app-topbar (toggleSidebar)="toggleSidebar()" />
+    <main class="shell-content">
+      <div [class.page-enter]="pageEntering()">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+  <!-- Global Command Palette (Ctrl+K) -->
+  <app-command-palette />
+</div>

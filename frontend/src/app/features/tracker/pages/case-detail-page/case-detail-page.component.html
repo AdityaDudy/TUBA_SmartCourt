@@ -1,0 +1,544 @@
+<div class="page case-detail-page" id="case-detail-page">
+
+  <!-- ── Back navigation ──────────────────────────────────────── -->
+  <div class="back-nav">
+    <button class="back-btn" (click)="backToSearch()">
+      <i class="fas fa-arrow-left"></i> Court Tracker
+    </button>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-cnr">{{ cnr() }}</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  SKELETON LOADING                                          -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (loading()) {
+    <div class="skeleton-layout">
+      <div class="skeleton-main">
+        <div class="skeleton-header card">
+          <div class="skel skel-title"></div>
+          <div class="skel skel-sub"></div>
+          <div class="skel-row">
+            <div class="skel skel-badge"></div>
+            <div class="skel skel-badge skel-badge--wide"></div>
+          </div>
+        </div>
+        <div class="card skel-tabs">
+          <div class="skel skel-tab"></div><div class="skel skel-tab"></div>
+          <div class="skel skel-tab"></div><div class="skel skel-tab"></div>
+          <div class="skel skel-tab"></div>
+        </div>
+        <div class="card">
+          <div class="skel skel-line"></div>
+          <div class="skel skel-line skel-line--mid"></div>
+          <div class="skel skel-line skel-line--short"></div>
+          <div class="skel skel-line"></div>
+        </div>
+      </div>
+      <div class="skeleton-rail">
+        <div class="card">
+          <div class="skel skel-line skel-line--short"></div>
+          <div class="skel skel-line skel-line--mid"></div>
+          <div class="skel skel-btn"></div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  ERROR STATE                                               -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (!loading() && error()) {
+    <div class="error-card card">
+      <i class="fas fa-triangle-exclamation"></i>
+      <h3>{{ error()?.includes('not found') ? 'Case Not Found' : 'Service Unavailable' }}</h3>
+      <p>{{ error() }}</p>
+      <div class="error-actions">
+        <button class="btn-outline" (click)="backToSearch()"><i class="fas fa-arrow-left"></i> Back to Search</button>
+        @if (!error()?.includes('not found')) {
+          <button class="btn-primary" (click)="refresh()"><i class="fas fa-rotate-right"></i> Retry</button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  MAIN LAYOUT                                               -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (!loading() && !error() && detail()) {
+    <div class="detail-layout">
+
+      <!-- ═══════════════════════════════ MAIN COLUMN ═════════ -->
+      <div class="detail-main">
+
+        <!-- ── Header Card ────────────────────────────────────── -->
+        <div class="card header-card">
+
+          <!-- Stale data banner -->
+          @if (isStale) {
+            <div class="stale-banner">
+              <i class="fas fa-clock"></i>
+              Last synced {{ timeSince(detail()!.lastSyncedAt) }}
+              <button class="stale-refresh" [disabled]="refreshing()" (click)="refresh()">
+                <i class="fas fa-rotate-right" [class.fa-spin]="refreshing()"></i>
+                {{ refreshing() ? 'Refreshing...' : 'Refresh' }}
+              </button>
+            </div>
+          }
+
+          <div class="header-content">
+            <div class="header-meta">
+              <div class="case-title-row">
+                <h1 class="case-title">{{ caseTitle }}</h1>
+                <span class="status-badge" [class]="statusClass">
+                  {{ nvl(detail()!.caseStatus) }}
+                </span>
+              </div>
+
+              <p class="case-court">
+                <i class="fas fa-building-columns"></i>
+                {{ nvl(detail()!.courtName) }}
+                @if (detail()!.courtComplex) {
+                  <span class="court-sep">·</span>{{ detail()!.courtComplex }}
+                }
+              </p>
+
+              @if (detail()!.judgeName) {
+                <p class="judge-name">
+                  <i class="fas fa-gavel"></i> {{ detail()!.judgeName }}
+                </p>
+              }
+
+              <!-- Identity row -->
+              <div class="identity-row">
+                @if (detail()!.cnr) {
+                  <div class="id-chip">
+                    <span class="id-label">CNR</span>
+                    <span class="id-value">{{ detail()!.cnr }}</span>
+                    <button class="copy-btn" (click)="copyToClipboard(detail()!.cnr, 'cnr')"
+                      [title]="copiedField() === 'cnr' ? 'Copied!' : 'Copy CNR'">
+                      <i [class]="copiedField() === 'cnr' ? 'fas fa-check' : 'fas fa-copy'"></i>
+                    </button>
+                  </div>
+                }
+                @if (detail()!.filingNo) {
+                  <div class="id-chip">
+                    <span class="id-label">Filing No</span>
+                    <span class="id-value">{{ detail()!.filingNo }}</span>
+                    <button class="copy-btn" (click)="copyToClipboard(detail()!.filingNo!, 'filing')"
+                      [title]="copiedField() === 'filing' ? 'Copied!' : 'Copy Filing No'">
+                      <i [class]="copiedField() === 'filing' ? 'fas fa-check' : 'fas fa-copy'"></i>
+                    </button>
+                  </div>
+                }
+                @if (detail()!.registrationNo) {
+                  <div class="id-chip">
+                    <span class="id-label">Reg No</span>
+                    <span class="id-value">{{ detail()!.registrationNo }}</span>
+                    <button class="copy-btn" (click)="copyToClipboard(detail()!.registrationNo!, 'reg')">
+                      <i [class]="copiedField() === 'reg' ? 'fas fa-check' : 'fas fa-copy'"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Acts & Sections chips -->
+              @if ((detail()!.actsAndSections?.length ?? 0) > 0) {
+                <div class="acts-row">
+                  @for (act of detail()!.actsAndSections!; track act) {
+                    <span class="act-chip">{{ act.trim() }}</span>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Action buttons -->
+            <div class="header-actions">
+              <button class="btn-outline btn-sm" (click)="refresh()" [disabled]="refreshing()">
+                <i class="fas fa-rotate-right" [class.fa-spin]="refreshing()"></i>
+                {{ refreshing() ? 'Refreshing' : 'Refresh' }}
+              </button>
+              <button class="btn-outline btn-sm" (click)="exportPdf()" [disabled]="exportingPdf()">
+                <i class="fas fa-file-export" [class.fa-spin]="exportingPdf()"></i>
+                Export PDF
+              </button>
+              @if ((detail()!.orders?.length ?? 0) > 0) {
+                <button class="btn-outline btn-sm" (click)="downloadAll()" [disabled]="downloadingAll()">
+                  <i class="fas fa-download" [class.fa-spin]="downloadingAll()"></i>
+                  All Orders
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (detail()!.nextHearingDate) {
+            <div class="next-hearing-bar">
+              <i class="fas fa-calendar-check"></i>
+              <strong>Next Hearing:</strong>
+              <span class="nh-date">{{ formatDate(detail()!.nextHearingDate) }}</span>
+              @if (detail()!.stageOfCase) {
+                <span class="nh-stage">{{ detail()!.stageOfCase }}</span>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- ── Matter Suggestion Banner ───────────────────────── -->
+        @if (matterSuggestion() && !matterLinked()) {
+          <div class="suggestion-banner">
+            <i class="fas fa-link"></i>
+            <div class="sb-body">
+              <strong>Match found:</strong> This case looks like
+              <em>{{ matterSuggestion()!.matterTitle }}</em>
+            </div>
+            <div class="sb-actions">
+              <button class="btn-primary btn-sm" [disabled]="linkingMatter()" (click)="confirmMatterLink()">
+                <i class="fas fa-check"></i> Link to Matter
+              </button>
+              <button class="btn-ghost btn-sm" (click)="dismissMatterSuggestion()">Dismiss</button>
+            </div>
+          </div>
+        }
+
+        @if (matterLinked() && detail()!.matterTitle) {
+          <div class="linked-banner">
+            <i class="fas fa-link"></i>
+            Linked to matter: <strong>{{ detail()!.matterTitle }}</strong>
+          </div>
+        }
+
+        <!-- ── Tabs ───────────────────────────────────────────── -->
+        <div class="tabs-bar card">
+          @for (tab of tabs; track tab.id) {
+            <button class="tab-btn" [class.tab-btn--active]="activeTab() === tab.id"
+              (click)="setTab(tab.id)" [id]="'tab-' + tab.id">
+              <i [class]="'fas ' + tab.icon"></i>
+              {{ tab.label }}
+              @if (tab.id === 'orders' && (detail()!.orders?.length ?? 0) > 0) {
+                <span class="tab-count">{{ detail()!.orders!.length }}</span>
+              }
+              @if (tab.id === 'history' && (detail()!.hearings?.length ?? 0) > 0) {
+                <span class="tab-count">{{ detail()!.hearings!.length }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        <!-- ════════════════════════════════════════════════════ -->
+        <!--  TAB: HISTORY (vertical timeline - Primary Tab)       -->
+        <!-- ════════════════════════════════════════════════════ -->
+        @if (activeTab() === 'history') {
+          <div class="tab-content card">
+            @if ((detail()!.hearings?.length ?? 0) === 0) {
+              <div class="empty-state">
+                <i class="fas fa-timeline"></i>
+                <p>No hearing history available from court records.</p>
+              </div>
+            } @else {
+              <div class="history-timeline">
+                @for (h of detail()!.hearings!; track h.hearingDate; let last = $last) {
+                  <div class="history-item" [class.history-item--last]="last">
+                    <div class="hi-date">{{ formatDate(h.hearingDate) }}</div>
+                    <div class="hi-track">
+                      <div class="hi-dot"></div>
+                      @if (!last) { <div class="hi-line"></div> }
+                    </div>
+                    <div class="hi-body">
+                      @if (h.purposeOfHearing) {
+                        <div class="hi-stage">{{ h.purposeOfHearing }}</div>
+                      }
+                      @if (h.judge) {
+                        <div class="hi-judge"><i class="fas fa-gavel"></i> {{ h.judge }}</div>
+                      }
+                      @if (h.businessRemarks) {
+                        <p class="hi-remarks">{{ h.businessRemarks }}</p>
+                      }
+                      @if (h.nextHearingDate) {
+                        <div class="hi-next">
+                          <i class="fas fa-calendar-arrow-right"></i>
+                          Next: <strong>{{ formatDate(h.nextHearingDate) }}</strong>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ════════════════════════════════════════════════════ -->
+        <!--  TAB: OVERVIEW (Grouped Clusters)                      -->
+        <!-- ════════════════════════════════════════════════════ -->
+        @if (activeTab() === 'overview') {
+          <div class="tab-content card">
+            <div class="overview-clusters">
+              <!-- Cluster 1: Identification & Case Details -->
+              <div class="cluster-group">
+                <h3 class="cluster-head"><i class="fas fa-id-card"></i> Case Identification</h3>
+                <div class="kv-grid">
+                  <div class="kv-row">
+                    <span class="kv-label">Case Type</span>
+                    <span class="kv-value">{{ nvl(detail()!.caseType) }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Filing No / Date</span>
+                    <span class="kv-value">{{ nvl(detail()!.filingNo) }} ({{ formatDate(detail()!.filingDate) }})</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Registration No / Date</span>
+                    <span class="kv-value">{{ nvl(detail()!.registrationNo) }} ({{ formatDate(detail()!.registrationDate) }})</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 2: Status & Forum -->
+              <div class="cluster-group">
+                <h3 class="cluster-head"><i class="fas fa-gavel"></i> Court & Forum</h3>
+                <div class="kv-grid">
+                  <div class="kv-row">
+                    <span class="kv-label">Court</span>
+                    <span class="kv-value">{{ nvl(detail()!.courtName) }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Court Complex</span>
+                    <span class="kv-value">{{ nvl(detail()!.courtComplex) }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Judge</span>
+                    <span class="kv-value">{{ nvl(detail()!.judgeName) }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Case Status</span>
+                    <span class="kv-value">
+                      <span class="status-badge status-badge--sm" [class]="statusClass">
+                        {{ nvl(detail()!.caseStatus) }}
+                      </span>
+                    </span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Stage / Disposal</span>
+                    <span class="kv-value">{{ nvl(detail()!.stageOfCase) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 3: Criminal Details (Rendered only when FIR exists) -->
+              @if (detail()!.firNo || detail()!.policeStation) {
+                <div class="cluster-group">
+                  <h3 class="cluster-head"><i class="fas fa-shield"></i> FIR & Police Information</h3>
+                  <div class="kv-grid">
+                    @if (detail()!.firNo) {
+                      <div class="kv-row">
+                        <span class="kv-label">FIR No. & Year</span>
+                        <span class="kv-value">{{ detail()!.firNo }} / {{ detail()!.firYear }}</span>
+                      </div>
+                    }
+                    @if (detail()!.policeStation) {
+                      <div class="kv-row">
+                        <span class="kv-label">Police Station</span>
+                        <span class="kv-value">{{ detail()!.policeStation }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ════════════════════════════════════════════════════ -->
+        <!--  TAB: PARTIES                                         -->
+        <!-- ════════════════════════════════════════════════════ -->
+        @if (activeTab() === 'parties') {
+          <div class="tab-content parties-grid">
+            <div class="party-column card">
+              <h3 class="party-head party-head--petitioner">
+                <i class="fas fa-user"></i> Petitioner(s)
+              </h3>
+              @if ((detail()!.petitioners?.length ?? 0) === 0) {
+                <p class="empty-field">Not available from court records</p>
+              }
+              @for (p of detail()!.petitioners!; track p.name) {
+                <div class="party-card">
+                  <div class="party-name">{{ p.name }}</div>
+                  @if (p.advocate) {
+                    <div class="party-adv"><i class="fas fa-briefcase"></i> {{ p.advocate }}</div>
+                  } @else {
+                    <div class="party-adv empty-field">Advocate not available</div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="party-column card">
+              <h3 class="party-head party-head--respondent">
+                <i class="fas fa-user-tie"></i> Respondent(s)
+              </h3>
+              @if ((detail()!.respondents?.length ?? 0) === 0) {
+                <p class="empty-field">Not available from court records</p>
+              }
+              @for (r of detail()!.respondents!; track r.name) {
+                <div class="party-card">
+                  <div class="party-name">{{ r.name }}</div>
+                  @if (r.advocate) {
+                    <div class="party-adv"><i class="fas fa-briefcase"></i> {{ r.advocate }}</div>
+                  } @else {
+                    <div class="party-adv empty-field">Advocate not available</div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ════════════════════════════════════════════════════ -->
+        <!--  TAB: ORDERS                                          -->
+        <!-- ════════════════════════════════════════════════════ -->
+        @if (activeTab() === 'orders') {
+          <div class="tab-content card">
+            @if ((detail()!.orders?.length ?? 0) === 0) {
+              <div class="empty-state">
+                <i class="fas fa-file-slash"></i>
+                <p>No order documents available for this case yet.</p>
+              </div>
+            } @else {
+              <div class="orders-header">
+                <div>
+                  <span class="section-label">{{ detail()!.orders!.length }} Order(s)</span>
+                  <span class="ondemand-badge" title="Order PDFs are downloaded on-demand only when requested to save API credits">
+                    <i class="fas fa-bolt"></i> On-Demand Fetch (Save Credits)
+                  </span>
+                </div>
+                <button class="btn-outline btn-sm" (click)="downloadAll()" [disabled]="downloadingAll()">
+                  <i class="fas fa-file-zipper" [class.fa-spin]="downloadingAll()"></i>
+                  Download All (.zip)
+                </button>
+              </div>
+              <div class="orders-list">
+                @for (order of detail()!.orders!; track order.id) {
+                  <div class="order-row">
+                    <div class="order-info">
+                      <span class="order-date">{{ formatDate(order.orderDate) }}</span>
+                      <span class="order-type">{{ nvl(order.orderType) }}</span>
+                      @if (order.orderCategory) {
+                        <span class="status-badge status-badge--sm"
+                              [class.status--disposed]="order.orderCategory === 'JUDGMENT'"
+                              [class.status--stayed]="order.orderCategory === 'INTERIM'">
+                          {{ order.orderCategory }}
+                        </span>
+                      }
+                      @if (order.orderNo) {
+                        <span class="order-no">{{ order.orderNo }}</span>
+                      }
+                    </div>
+                    <div class="order-meta">
+                      @if (order.fileSize) {
+                        <span class="order-size">{{ formatFileSize(order.fileSize) }}</span>
+                      }
+                    </div>
+                    <div class="order-actions">
+                      @if (order.downloadUrl) {
+                        <!-- Option 1: Download PDF file separately -->
+                        <button class="btn-primary btn-sm"
+                          title="Download document file separately"
+                          [disabled]="downloadingOrder() === order.id"
+                          (click)="downloadOrder(order)">
+                          @if (downloadingOrder() === order.id) {
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                          } @else {
+                            <i class="fas fa-download"></i>
+                          }
+                          Download PDF
+                        </button>
+
+                        <!-- Option 2: Save to Linked Matter document folder -->
+                        <button class="btn-outline btn-sm save-vault-btn"
+                          title="Save document into linked matter's Document Vault folder"
+                          [disabled]="savingToMatter() === order.id || !detail()!.matterId"
+                          (click)="saveToMatterVault(order)">
+                          @if (savingToMatter() === order.id) {
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                          } @else {
+                            <i class="fas fa-folder-plus"></i>
+                          }
+                          Save to Matter Vault
+                        </button>
+                      } @else {
+                        <span class="order-pending">Processing...</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+      </div><!-- /detail-main -->
+
+      <!-- ═══════════════════════════════ RIGHT RAIL ════════════ -->
+      <aside class="detail-rail">
+
+        <!-- Alert Toggle -->
+        <div class="card rail-card">
+          <h4 class="rail-title"><i class="fas fa-bell"></i> Case Alerts</h4>
+          <p class="rail-desc">Get notified when new orders or hearing dates are added.</p>
+          <button class="alert-toggle" [class.alert-toggle--on]="alertActive()"
+            [disabled]="alertLoading()" (click)="toggleAlert()">
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">
+              {{ alertLoading() ? 'Saving...' : (alertActive() ? 'Alerts On' : 'Alerts Off') }}
+            </span>
+          </button>
+        </div>
+
+        <!-- Linked Matter -->
+        @if (detail()!.matterId) {
+          <div class="card rail-card">
+            <h4 class="rail-title"><i class="fas fa-folder-tree"></i> Linked Matter</h4>
+            <p class="rail-matter-title">{{ detail()!.matterTitle || 'Matter #' + detail()!.matterId }}</p>
+          </div>
+        }
+
+        <!-- Quick Summary -->
+        <div class="card rail-card">
+          <h4 class="rail-title"><i class="fas fa-circle-info"></i> Case Summary</h4>
+          <div class="quick-facts">
+            <div class="qf-row">
+              <span class="qf-label">Status</span>
+              <span class="qf-value">
+                <span class="status-badge status-badge--sm" [class]="statusClass">
+                  {{ nvl(detail()!.caseStatus) }}
+                </span>
+              </span>
+            </div>
+            <div class="qf-row">
+              <span class="qf-label">Orders</span>
+              <span class="qf-value">{{ detail()!.orders?.length ?? 0 }} Document(s)</span>
+            </div>
+            <div class="qf-row">
+              <span class="qf-label">Hearings</span>
+              <span class="qf-value">{{ detail()!.hearings?.length ?? 0 }} Record(s)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Last synced info -->
+        <div class="card rail-card rail-card--muted">
+          <div class="sync-info">
+            <i class="fas fa-cloud"></i>
+            <span>Last synced: <strong>{{ timeSince(detail()!.lastSyncedAt) }}</strong></span>
+          </div>
+          <button class="btn-ghost btn-sm" (click)="refresh()" [disabled]="refreshing()" style="margin-top:8px">
+            <i class="fas fa-rotate-right" [class.fa-spin]="refreshing()"></i>
+            {{ refreshing() ? 'Refreshing...' : 'Force Refresh' }}
+          </button>
+        </div>
+
+      </aside>
+
+    </div><!-- /detail-layout -->
+  }<!-- /if detail -->
+</div>

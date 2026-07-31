@@ -1,0 +1,108 @@
+<header class="topbar" id="topbar">
+  <div class="tb-left">
+    <button class="tb-burger" (click)="toggleSidebar.emit()" title="Toggle Sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="tb-search-wrap">
+      <i class="fas fa-search tb-search-ic"></i>
+      <input class="tb-search" type="text" placeholder="Search matters, clients, hearings…" id="topbar-search"
+        [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" (keyup.enter)="doSearch()">
+      <span class="tb-kbd">⌘K</span>
+    </div>
+  </div>
+
+  <div class="tb-right">
+    <!-- Theme Toggle Switch -->
+    <div class="tb-icon-wrap theme-toggle-wrap">
+      <label class="switch-toggle" title="Toggle Light/Dark Theme">
+        <input type="checkbox" [checked]="isDarkMode()" (change)="toggleTheme()">
+        <span class="slider-round"></span>
+      </label>
+    </div>
+
+    <!-- Notifications -->
+    <div class="tb-icon-wrap">
+      <button class="tb-icon-btn" id="notif-btn" (click)="toggleNotif()" [class.active]="notifPanelOpen()">
+        <i class="fas fa-bell"></i>
+        @if (unreadCount() > 0) {
+        <span class="tb-badge">{{ unreadCount() > 9 ? '9+' : unreadCount() }}</span>
+        }
+      </button>
+
+      @if (notifPanelOpen()) {
+      <div class="notif-panel" id="notif-panel">
+        <div class="np-header">
+          <span>Notifications</span>
+          @if (unreadCount() > 0) {
+          <button class="np-mark" (click)="markAllRead()">Mark all read</button>
+          }
+        </div>
+        <div class="np-list">
+          @for (n of notifications(); track n.id) {
+          <div class="np-item" [class.unread]="!n.read">
+            <div class="np-dot" [class]="n.type === 'warning' ? 'dot-red' : 'dot-green'"></div>
+            <div class="np-body">
+              <div class="np-title">{{ n.title }}</div>
+              <div class="np-msg">{{ n.message }}</div>
+            </div>
+          </div>
+          } @empty {
+          <div class="np-empty">
+            <i class="fas fa-bell-slash"></i>
+            <p>All caught up!</p>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- User -->
+    <div class="tb-icon-wrap">
+      <button class="tb-user-btn" id="user-menu-btn" (click)="toggleUserMenu()">
+        <div class="tb-av" [style.background]="auth.userAvatar() ? 'transparent' : auth.userGradient()"
+          style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          @if (auth.userAvatar()) {
+          <img [src]="auth.userAvatar()" alt="User"
+            style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+          } @else {
+          {{ auth.userInitials() }}
+          }
+        </div>
+        <div class="tb-user-info">
+          <div class="tb-user-name">{{ auth.userName() }}</div>
+          <div class="tb-user-role">{{ auth.userRole() }}</div>
+        </div>
+        <i class="fas fa-chevron-down tb-chev"></i>
+      </button>
+
+      @if (userMenuOpen()) {
+      <div class="user-menu" id="user-menu">
+        <div class="um-header">
+          <div class="um-av" [style.background]="auth.userAvatar() ? 'transparent' : auth.userGradient()"
+            style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            @if (auth.userAvatar()) {
+            <img [src]="auth.userAvatar()" alt="User"
+              style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            } @else {
+            {{ auth.userInitials() }}
+            }
+          </div>
+          <div>
+            <div class="um-name">{{ auth.userName() }}</div>
+            <div class="um-email">{{ auth.currentUser()?.email }}</div>
+          </div>
+        </div>
+        <div class="um-divider"></div>
+        <a class="um-item" routerLink="/app/settings" (click)="userMenuOpen.set(false)">
+          <i class="fas fa-gear"></i> Settings
+        </a>
+        <div class="um-divider"></div>
+        <button class="um-item um-logout" (click)="logout()">
+          <i class="fas fa-sign-out-alt"></i> Sign Out
+        </button>
+      </div>
+      }
+    </div>
+  </div>
+</header>

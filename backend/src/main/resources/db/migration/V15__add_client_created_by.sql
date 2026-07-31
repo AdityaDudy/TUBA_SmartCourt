@@ -1,0 +1,1 @@
+ALTER TABLE clients ADD COLUMN created_by VARCHAR(200) DEFAULT 'System';
