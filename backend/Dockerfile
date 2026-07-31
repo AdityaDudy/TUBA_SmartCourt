@@ -1,15 +1,14 @@
-# ---------- Stage 1: Build the jar with Maven ----------
-FROM eclipse-temurin:21-jdk AS build
+# ---------- Stage 1: Build the jar with Maven (no wrapper needed) ----------
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy Maven wrapper and pom first (layer caching: deps re-download only if pom changes)
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Copy pom first for dependency layer caching
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B
 
 # Now copy source and build
 COPY src ./src
-RUN ./mvnw package -DskipTests -B
+RUN mvn package -DskipTests -B
 
 # ---------- Stage 2: Run the jar with Playwright browser deps ----------
 FROM eclipse-temurin:21-jdk
