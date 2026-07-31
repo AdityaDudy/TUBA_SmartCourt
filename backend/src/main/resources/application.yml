@@ -4,8 +4,8 @@ spring:
 
   # ── Database Configuration (PostgreSQL 18/16 & pgvector) ─────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/smartcourt
-    username: postgres
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/smartcourt}
+    username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -17,7 +17,7 @@ spring:
   # ── JPA / Hibernate ──────────────────────────────────────────
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     show-sql: true
     properties:
@@ -56,7 +56,7 @@ spring:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
 
-  # ── Spring AI / OpenRouter ───────────────────────────────────
+  # ── Spring AI ──────────────────────────────────────────────
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:demo-key}
@@ -64,21 +64,22 @@ spring:
         options:
           model: gpt-4o
 
-openrouter:
-  api-key: ${OPENROUTER_API_KEY:}
-  model: ${OPENROUTER_MODEL:google/gemini-2.5-flash}
-  url: ${OPENROUTER_URL:https://openrouter.ai/api/v1/chat/completions}
-
   # ── File Upload Limits ───────────────────────────────────────
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 60MB
 
+# ── OpenRouter ─────────────────────────────────────────────────
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:google/gemini-2.5-flash}
+  url: ${OPENROUTER_URL:https://openrouter.ai/api/v1/chat/completions}
+
 # ── JWT / Security settings ────────────────────────────────────
 security:
   jwt:
-    secret: TubaSmartCourtSecretKey2026_ThisMustBeAtLeast256BitsForHS256Algo
+    secret: ${JWT_SECRET:TubaSmartCourtSecretKey2026_ThisMustBeAtLeast256BitsForHS256Algo}
     access-expiry-seconds: 900
     refresh-expiry-seconds: 604800
   mfa:
@@ -108,9 +109,9 @@ tracker:
   provider:
     type: ${TRACKER_PROVIDER_TYPE:ecourtsindia} # 'ecourtsindia' or 'scraper'
     base-url: ${TRACKER_BASE_URL:https://webapi.ecourtsindia.com}
-    api-key: ${TRACKER_API_KEY:eci_live_tzcosr97dj7ewfgfd6mcb77nfxemf7r2}
+    api-key: ${TRACKER_API_KEY:}
     api-url: ${TRACKER_API_URL:https://webapi.ecourtsindia.com}
-  cache: 
+  cache:
     ttl-hours: ${TRACKER_CACHE_TTL_HOURS:6}
   storage:
     local-path: ./data/tracker-orders
@@ -121,7 +122,7 @@ tracker:
 
 # ── Server Port ───────────────────────────────────────────────
 server:
-  port: 8084
+  port: ${PORT:8084}
   servlet:
     context-path: /
 
