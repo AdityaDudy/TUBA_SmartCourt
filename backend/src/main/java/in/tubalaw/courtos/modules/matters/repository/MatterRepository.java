@@ -25,6 +25,9 @@ public interface MatterRepository extends JpaRepository<Matter, Long> {
 
        long countByTenantIdAndStatus(String tenantId, String status);
 
+       @Query("SELECT COUNT(m) FROM Matter m WHERE m.tenantId = :tenantId AND (LOWER(m.status) = 'closed' OR LOWER(m.status) = 'disposed')")
+       long countClosedOrDisposed(String tenantId);
+
        /**
         * Matters with no TrackedCase row linked to them — used by the
         * bulk-link onboarding screen to show which matters still need a CNR.

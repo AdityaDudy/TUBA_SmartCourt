@@ -5,15 +5,13 @@ import in.tubalaw.courtos.modules.auth.entity.User;
 import in.tubalaw.courtos.modules.auth.repository.UserRepository;
 import in.tubalaw.courtos.modules.diary.entity.DiaryEvent;
 import in.tubalaw.courtos.modules.diary.service.DiaryScopeResolver;
+import in.tubalaw.courtos.modules.diary.repository.DiaryEventRepository;
 import in.tubalaw.courtos.modules.matters.repository.MatterRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -22,15 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-@Repository
-interface DiaryEventRepository extends JpaRepository<DiaryEvent, Long> {
-    @Query("SELECT d FROM DiaryEvent d WHERE d.tenantId = :tenantId AND YEAR(d.eventDate) = :year AND MONTH(d.eventDate) = :month AND (d.ownerId IN :ownerIds OR d.ownerId IS NULL) ORDER BY d.eventDate ASC, d.eventTime ASC")
-    List<DiaryEvent> findByMonthAndOwners(String tenantId, int year, int month, List<Long> ownerIds);
-
-    @Query("SELECT d FROM DiaryEvent d WHERE d.tenantId = :tenantId AND (d.ownerId IN :ownerIds OR d.ownerId IS NULL) ORDER BY d.eventDate ASC, d.eventTime ASC")
-    List<DiaryEvent> findByOwners(String tenantId, List<Long> ownerIds);
-}
 
 @RestController
 @RequestMapping("/api/diary")
@@ -142,13 +131,16 @@ public class DiaryController {
             event.setCreatedBy(current.getId());
         }
 
-        // Link client details if matterId is present
+        // Link client & court details if matterId is present
         if (event.getMatterId() != null) {
             matterRepo.findById(event.getMatterId()).ifPresent(m -> {
                 event.setMatterTitle(m.getTitle());
                 if (m.getClientId() != null) {
                     event.setClientId(m.getClientId());
                     event.setClientName(m.getClientName());
+                }
+                if ((event.getCourt() == null || event.getCourt().isBlank()) && m.getCourt() != null && !m.getCourt().isBlank()) {
+                    event.setCourt(m.getCourt());
                 }
             });
         }
@@ -168,6 +160,8 @@ public class DiaryController {
                 e.setEventTime(updates.getEventTime());
             if (updates.getNotes() != null)
                 e.setNotes(updates.getNotes());
+            if (updates.getCourt() != null && !updates.getCourt().isBlank())
+                e.setCourt(updates.getCourt());
             if (updates.getMatterId() != null) {
                 e.setMatterId(updates.getMatterId());
                 matterRepo.findById(updates.getMatterId()).ifPresent(m -> {
@@ -175,6 +169,9 @@ public class DiaryController {
                     if (m.getClientId() != null) {
                         e.setClientId(m.getClientId());
                         e.setClientName(m.getClientName());
+                    }
+                    if ((e.getCourt() == null || e.getCourt().isBlank()) && m.getCourt() != null && !m.getCourt().isBlank()) {
+                        e.setCourt(m.getCourt());
                     }
                 });
             }

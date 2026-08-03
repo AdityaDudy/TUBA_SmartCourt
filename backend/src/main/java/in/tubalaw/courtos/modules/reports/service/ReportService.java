@@ -262,12 +262,85 @@ public class ReportService {
             })
             .collect(Collectors.toList());
 
+        // ── 8. Calculate Previous FY Trends (Dynamic Green Subtext Badges) ────
+        LocalDate prevStart = finalStart != null ? finalStart.minusYears(1) : LocalDate.now().minusYears(1).withMonth(4).withDayOfMonth(1);
+        LocalDate prevEnd = finalEnd != null ? finalEnd.minusYears(1) : LocalDate.now().withMonth(3).withDayOfMonth(31);
+
+        // Previous FY filtered matters
+        List<Matter> prevMatters = matters.stream()
+            .filter(m -> {
+                LocalDate fd = m.getFilingDate();
+                if (fd == null && m.getCreatedAt() != null) {
+                    fd = LocalDate.ofInstant(m.getCreatedAt(), java.time.ZoneId.systemDefault());
+                }
+                if (fd == null) return false;
+                return !fd.isBefore(prevStart) && !fd.isAfter(prevEnd);
+            })
+            .filter(m -> practiceArea == null || practiceArea.trim().isEmpty() || (m.getArea() != null && m.getArea().equalsIgnoreCase(practiceArea.trim())))
+            .filter(m -> court == null || court.trim().isEmpty() || (m.getCourt() != null && m.getCourt().equalsIgnoreCase(court.trim())))
+            .filter(m -> advocate == null || advocate.trim().isEmpty() || (m.getAdvocate() != null && m.getAdvocate().equalsIgnoreCase(advocate.trim())))
+            .collect(Collectors.toList());
+
+        long currentMattersCount = filteredMatters.size();
+        long prevMattersCount = prevMatters.size();
+        int mattersTrendPct = prevMattersCount > 0 ? (int) Math.round(((double)(currentMattersCount - prevMattersCount) / prevMattersCount) * 100) : (currentMattersCount > 0 ? 100 : 0);
+        String totalMattersTrend = (mattersTrendPct >= 0 ? "+" : "") + mattersTrendPct + "% vs Last FY";
+
+        // Previous FY win rate
+        List<Matter> prevDisposedMatters = prevMatters.stream()
+            .filter(m -> "Disposed".equalsIgnoreCase(m.getStatus()))
+            .collect(Collectors.toList());
+        long prevWon = prevDisposedMatters.stream().filter(m -> "Won".equalsIgnoreCase(m.getOutcome())).count();
+        long prevLost = prevDisposedMatters.stream().filter(m -> "Lost".equalsIgnoreCase(m.getOutcome())).count();
+        int prevWinRate = (prevWon + prevLost > 0) ? (int) Math.round((double) prevWon / (prevWon + prevLost) * 100) : 0;
+        int winRateDiff = winRate - prevWinRate;
+        String winRateTrend = (winRateDiff >= 0 ? "+" : "") + winRateDiff + "% vs Last Year";
+
+        // Previous FY revenue
+        List<Invoice> prevInvoices = invoices.stream()
+            .filter(inv -> inv.getDueDate() != null && !inv.getDueDate().isBefore(prevStart) && !inv.getDueDate().isAfter(prevEnd))
+            .filter(inv -> {
+                if (inv.getMatterId() == null) return true;
+                Optional<Matter> oMat = matters.stream().filter(m -> m.getId().equals(inv.getMatterId())).findFirst();
+                if (oMat.isPresent()) {
+                    Matter m = oMat.get();
+                    if (practiceArea != null && !practiceArea.trim().isEmpty() && (m.getArea() == null || !m.getArea().equalsIgnoreCase(practiceArea.trim()))) return false;
+                    if (court != null && !court.trim().isEmpty() && (m.getCourt() == null || !m.getCourt().equalsIgnoreCase(court.trim()))) return false;
+                    if (advocate != null && !advocate.trim().isEmpty() && (m.getAdvocate() == null || !m.getAdvocate().equalsIgnoreCase(advocate.trim()))) return false;
+                }
+                return true;
+            })
+            .collect(Collectors.toList());
+        double prevRevenue = prevInvoices.stream()
+            .filter(inv -> "Paid".equalsIgnoreCase(inv.getStatus()) || "Partially Paid".equalsIgnoreCase(inv.getStatus()))
+            .mapToDouble(inv -> inv.getPaidAmount() != null ? inv.getPaidAmount().doubleValue() : 0.0)
+            .sum();
+
+        int revTrendPct = prevRevenue > 0 ? (int) Math.round(((collectedRevenue - prevRevenue) / prevRevenue) * 100) : (collectedRevenue > 0 ? 100 : 0);
+        String revenueTrend = (revTrendPct >= 0 ? "+" : "") + revTrendPct + "% vs Last FY";
+
+        // Clients trend
+        long newClientsCount = clients.stream().filter(c -> {
+            if (c.getCreatedAt() != null) {
+                LocalDate cd = LocalDate.ofInstant(c.getCreatedAt(), java.time.ZoneId.systemDefault());
+                if (finalStart != null && finalEnd != null) {
+                    return !cd.isBefore(finalStart) && !cd.isAfter(finalEnd);
+                }
+            }
+            return true;
+        }).count();
+        String clientsTrend = "+" + newClientsCount + " new";
+
         // Assemble result
         Map<String, Object> result = new HashMap<>();
         result.put("totalMatters", filteredMatters.size());
         result.put("winRate", winRate);
         result.put("revenue", collectedRevenue);
         result.put("clients", activeClientsCount);
+        result.put("totalMattersTrend", totalMattersTrend);
+        result.put("winRateTrend", winRateTrend);
+        result.put("revenueTrend", revenueTrend);
+        result.put("clientsTrend", clientsTrend);
         result.put("funnel", funnel);
         result.put("donut", donut);
         result.put("monthlyHearings", monthlyHearings);

@@ -38,5 +38,7 @@ public interface HearingRepository extends JpaRepository<Hearing, Long> {
 
     long countByTenantIdAndHearingDate(String tenantId, LocalDate date);
 
+    long countByTenantIdAndHearingDateBetween(String tenantId, LocalDate startDate, LocalDate endDate);
+
     long countByTenantIdAndStatus(String tenantId, String status);
 }

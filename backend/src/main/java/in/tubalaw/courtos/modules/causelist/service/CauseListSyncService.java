@@ -86,7 +86,10 @@ public class CauseListSyncService {
         h.setMatterId(tc.getMatterId());
         h.setCaseTitle(matter.getTitle());
         h.setCaseNo(matter.getCaseNo());
-        h.setCourt(normalizeCourtBucket(tc.getCourtName()));
+        String courtDisplay = (matter.getCourt() != null && !matter.getCourt().isBlank())
+                ? matter.getCourt()
+                : (tc.getCourtName() != null && !tc.getCourtName().isBlank() ? tc.getCourtName() : normalizeCourtBucket(null));
+        h.setCourt(courtDisplay);
         h.setBench(bench != null ? bench : (tc.getCourtComplex() != null ? tc.getCourtComplex() : tc.getJudgeName()));
         h.setHearingDate(hearingDate);
         if (h.getHearingTime() == null) {
