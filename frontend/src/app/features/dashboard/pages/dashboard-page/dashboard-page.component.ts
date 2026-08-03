@@ -52,6 +52,7 @@ export class DashboardPageComponent implements OnInit {
     this.ds.loadHearings().subscribe();
     this.ds.loadMatters().subscribe();
     this.ds.loadTasks().subscribe();
+    this.ds.loadFilings().subscribe();
     this.ds.getTimeline().subscribe(t  => this.timeline.set(t));
     this.ds.getTeamPerformance().subscribe(t => this.teamPerf.set(t));
     this.ds.getRevenue().subscribe(r => this.revenue.set(r));

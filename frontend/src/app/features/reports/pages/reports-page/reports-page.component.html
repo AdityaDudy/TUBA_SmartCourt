@@ -73,7 +73,7 @@
           <div class="kpi-left">
             <span class="kpi-lbl">Total Matters FY</span>
             <div class="kpi-val">{{ data.totalMatters }}</div>
-            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +6% vs Last FY</span>
+            <span class="kpi-trend" [class.trend-green]="!data.totalMattersTrend?.startsWith('-')" [class.trend-red]="data.totalMattersTrend?.startsWith('-')"><i class="fas" [class.fa-caret-up]="!data.totalMattersTrend?.startsWith('-')" [class.fa-caret-down]="data.totalMattersTrend?.startsWith('-')"></i> {{ data.totalMattersTrend || '+0% vs Last FY' }}</span>
           </div>
           <div class="kpi-sparkline">
             <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -88,7 +88,7 @@
           <div class="kpi-left">
             <span class="kpi-lbl">Win Rate</span>
             <div class="kpi-val">{{ data.winRate }}%</div>
-            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +4% vs Last Year</span>
+            <span class="kpi-trend" [class.trend-green]="!data.winRateTrend?.startsWith('-')" [class.trend-red]="data.winRateTrend?.startsWith('-')"><i class="fas" [class.fa-caret-up]="!data.winRateTrend?.startsWith('-')" [class.fa-caret-down]="data.winRateTrend?.startsWith('-')"></i> {{ data.winRateTrend || '+0% vs Last Year' }}</span>
           </div>
           <div class="kpi-sparkline">
             <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -103,7 +103,7 @@
           <div class="kpi-left">
             <span class="kpi-lbl">Revenue FY</span>
             <div class="kpi-val">{{ fmtRevenue(data.revenue) }}</div>
-            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +22% vs Last FY</span>
+            <span class="kpi-trend" [class.trend-green]="!data.revenueTrend?.startsWith('-')" [class.trend-red]="data.revenueTrend?.startsWith('-')"><i class="fas" [class.fa-caret-up]="!data.revenueTrend?.startsWith('-')" [class.fa-caret-down]="data.revenueTrend?.startsWith('-')"></i> {{ data.revenueTrend || '+0% vs Last FY' }}</span>
           </div>
           <div class="kpi-sparkline">
             <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -118,7 +118,7 @@
           <div class="kpi-left">
             <span class="kpi-lbl">Clients</span>
             <div class="kpi-val">{{ data.clients }}</div>
-            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> +14 new</span>
+            <span class="kpi-trend trend-green"><i class="fas fa-caret-up"></i> {{ data.clientsTrend || '+0 new' }}</span>
           </div>
           <div class="kpi-sparkline">
             <svg viewBox="0 0 100 30" class="sparkline-svg">

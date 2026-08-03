@@ -248,6 +248,7 @@ export class DataService {
   createMatter(data: Partial<Matter>): Observable<Matter> {
     return this.post<Matter>(API.MATTERS.CREATE, data).pipe(
       tap(m => this.patch('matters', { items: [m, ...this.matters()] })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Matter registered successfully!')),
     );
   }
@@ -257,6 +258,7 @@ export class DataService {
       tap(updated => this.patch('matters', {
         items: this.matters().map(m => m.id === id ? updated : m),
       })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Matter updated.')),
     );
   }
@@ -264,6 +266,7 @@ export class DataService {
   deleteMatter(id: string): Observable<void> {
     return this.del<void>(API.MATTERS.DELETE(id)).pipe(
       tap(() => this.patch('matters', { items: this.matters().filter(m => m.id !== id) })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Matter deleted.')),
     );
   }
@@ -350,6 +353,7 @@ export class DataService {
   createTask(data: Partial<Task>): Observable<Task> {
     return this.post<Task>(API.TASKS.CREATE, data).pipe(
       tap(t => this.patch('tasks', { items: [t, ...this.tasks()] })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Task created!')),
     );
   }
@@ -359,6 +363,7 @@ export class DataService {
       tap(updated => this.patch('tasks', {
         items: this.tasks().map(t => t.id === id ? updated : t),
       })),
+      tap(() => this.loadDashboardStats().subscribe()),
     );
   }
 
@@ -367,6 +372,7 @@ export class DataService {
       tap(updated => this.patch('tasks', {
         items: this.tasks().map(t => t.id === id ? updated : t),
       })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(t => this.toast.success(t.done ? 'Task complete!' : 'Task reopened.')),
     );
   }
@@ -374,6 +380,7 @@ export class DataService {
   deleteTask(id: string): Observable<void> {
     return this.del<void>(API.TASKS.DELETE(id)).pipe(
       tap(() => this.patch('tasks', { items: this.tasks().filter(t => t.id !== id) })),
+      tap(() => this.loadDashboardStats().subscribe()),
     );
   }
 
@@ -392,6 +399,7 @@ export class DataService {
   createFiling(data: Partial<Filing>): Observable<Filing> {
     return this.post<Filing>(API.FILINGS.CREATE, data).pipe(
       tap(f => this.patch('filings', { items: [f, ...this.filings()] })),
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Filing created!')),
     );
   }
@@ -401,6 +409,7 @@ export class DataService {
       tap(updated => this.patch('filings', {
         items: this.filings().map(f => f.id === id ? updated : f),
       })),
+      tap(() => this.loadDashboardStats().subscribe()),
     );
   }
 
@@ -408,6 +417,7 @@ export class DataService {
     return this.del<void>(API.FILINGS.DELETE(id)).pipe(
       tap(() => {
         this.patch('filings', { items: this.filings().filter(f => f.id !== id) });
+        this.loadDashboardStats().subscribe();
         this.toast.success('Filing deleted.');
       }),
     );
@@ -910,18 +920,21 @@ export class DataService {
 
   createDiaryEvent(data: Partial<DiaryEventDto>): Observable<DiaryEventDto> {
     return this.post<DiaryEventDto>(API.DIARY.CREATE, data).pipe(
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Event added to diary.')),
     );
   }
 
   updateDiaryEvent(id: string, data: Partial<DiaryEventDto>): Observable<DiaryEventDto> {
     return this.put<DiaryEventDto>(API.DIARY.UPDATE(id), data).pipe(
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Diary event updated.')),
     );
   }
 
   deleteDiaryEvent(id: string): Observable<void> {
     return this.del<void>(API.DIARY.DELETE(id)).pipe(
+      tap(() => this.loadDashboardStats().subscribe()),
       tap(() => this.toast.success('Diary event removed.')),
     );
   }

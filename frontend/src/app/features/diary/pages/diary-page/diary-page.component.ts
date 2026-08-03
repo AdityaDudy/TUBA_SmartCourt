@@ -94,8 +94,15 @@ export class DiaryPageComponent implements OnInit {
 
     const list: any[] = [];
 
+    const mattersMap = new Map(this.ds.matters().map(m => [String(m.id), m]));
+
     // 1. Add local events (already scoped server-side)
     for (const e of localEvents) {
+      const eTitleSearch = (e.title || e.matterTitle || '').toLowerCase();
+      const linkedMatter = e.matterId
+        ? mattersMap.get(String(e.matterId))
+        : (eTitleSearch ? this.ds.matters().find(m => m.title && eTitleSearch.includes(m.title.toLowerCase())) : null);
+
       list.push({
         id: e.id,
         title: e.title,
@@ -103,11 +110,11 @@ export class DiaryPageComponent implements OnInit {
         time: e.time || (e as any).eventTime || '09:00',
         type: e.type || 'meeting',
         urgent: e.urgent || false,
-        court: e.court || '',
-        matterId: e.matterId,
-        matterTitle: e.matterTitle || '',
-        clientId: e.clientId,
-        clientName: e.clientName || '',
+        court: (linkedMatter && linkedMatter.court) ? linkedMatter.court : (e.court || ''),
+        matterId: e.matterId || (linkedMatter ? linkedMatter.id : undefined),
+        matterTitle: e.matterTitle || (linkedMatter ? linkedMatter.title : ''),
+        clientId: e.clientId || (linkedMatter ? linkedMatter.clientId : undefined),
+        clientName: e.clientName || (linkedMatter ? linkedMatter.clientName : ''),
         ownerId: e.ownerId,
         ownerName: e.ownerName || '',
         notes: e.notes || '',
@@ -121,6 +128,8 @@ export class DiaryPageComponent implements OnInit {
       if (!t.done && isAllowedOwner(t.assignedTo)) {
         const dateStr = t.dueDate || t.due;
         if (dateStr) {
+          const mId = (t as any).matterId;
+          const linkedMatter = mId ? mattersMap.get(String(mId)) : null;
           list.push({
             id: 'task_' + t.id,
             title: `Task: ${t.title}`,
@@ -128,11 +137,11 @@ export class DiaryPageComponent implements OnInit {
             time: '09:00',
             type: 'task',
             urgent: t.priority === 'Urgent' || t.priority === 'High',
-            court: '',
-            matterId: (t as any).matterId,
-            matterTitle: t.matterTitle || t.matter || '',
-            clientId: (t as any).clientId,
-            clientName: (t as any).clientName || '',
+            court: (t as any).court || (linkedMatter ? linkedMatter.court : ''),
+            matterId: mId,
+            matterTitle: t.matterTitle || t.matter || (linkedMatter ? linkedMatter.title : ''),
+            clientId: (t as any).clientId || (linkedMatter ? linkedMatter.clientId : undefined),
+            clientName: (t as any).clientName || (linkedMatter ? linkedMatter.clientName : ''),
             ownerName: t.assignedTo || '',
             notes: t.notes || '',
             isLocal: false,
@@ -146,6 +155,10 @@ export class DiaryPageComponent implements OnInit {
     for (const f of filings) {
       if (!isAllowedOwner(f.advocate)) continue;
 
+      const mId = (f as any).matterId;
+      const linkedMatter = mId ? mattersMap.get(String(mId)) : null;
+      const courtName = f.court || (linkedMatter ? linkedMatter.court : '');
+
       const dateStr = f.dueDate || f.due;
       if (dateStr) {
         list.push({
@@ -155,11 +168,11 @@ export class DiaryPageComponent implements OnInit {
           time: '17:00',
           type: 'deadline',
           urgent: f.status !== 'Filed' && new Date(dateStr) <= new Date(),
-          court: f.court || '',
-          matterId: (f as any).matterId,
-          matterTitle: f.matterTitle || f.matter || '',
-          clientId: (f as any).clientId,
-          clientName: (f as any).clientName || '',
+          court: courtName,
+          matterId: mId,
+          matterTitle: f.matterTitle || f.matter || (linkedMatter ? linkedMatter.title : ''),
+          clientId: (f as any).clientId || (linkedMatter ? linkedMatter.clientId : undefined),
+          clientName: (f as any).clientName || (linkedMatter ? linkedMatter.clientName : ''),
           ownerName: f.advocate || '',
           notes: f.notes || f.description || '',
           isLocal: false,
@@ -174,11 +187,11 @@ export class DiaryPageComponent implements OnInit {
           time: '12:00',
           type: 'deadline',
           urgent: false,
-          court: f.court || '',
-          matterId: (f as any).matterId,
-          matterTitle: f.matterTitle || f.matter || '',
-          clientId: (f as any).clientId,
-          clientName: (f as any).clientName || '',
+          court: courtName,
+          matterId: mId,
+          matterTitle: f.matterTitle || f.matter || (linkedMatter ? linkedMatter.title : ''),
+          clientId: (f as any).clientId || (linkedMatter ? linkedMatter.clientId : undefined),
+          clientName: (f as any).clientName || (linkedMatter ? linkedMatter.clientName : ''),
           ownerName: f.advocate || '',
           notes: f.notes || f.description || '',
           isLocal: false,
@@ -191,6 +204,12 @@ export class DiaryPageComponent implements OnInit {
     for (const h of hearings) {
       if (!isAllowedOwner(h.advocate)) continue;
 
+      const mId = (h as any).matterId;
+      const titleSearch = (h.title || h.caseTitle || '').toLowerCase();
+      const linkedMatter = mId
+        ? mattersMap.get(String(mId))
+        : (titleSearch ? this.ds.matters().find(m => m.title && titleSearch.includes(m.title.toLowerCase())) : null);
+
       const dateStr = h.hearingDate;
       if (dateStr) {
         list.push({
@@ -200,11 +219,11 @@ export class DiaryPageComponent implements OnInit {
           time: h.hearingTime || h.time || '10:00',
           type: 'hearing',
           urgent: h.status === 'Urgent',
-          court: h.court,
-          matterId: (h as any).matterId,
-          matterTitle: h.caseTitle || '',
-          clientId: (h as any).clientId,
-          clientName: (h as any).clientName || '',
+          court: (linkedMatter && linkedMatter.court) ? linkedMatter.court : (h.court || ''),
+          matterId: mId || (linkedMatter ? linkedMatter.id : undefined),
+          matterTitle: h.caseTitle || (linkedMatter ? linkedMatter.title : ''),
+          clientId: (h as any).clientId || (linkedMatter ? linkedMatter.clientId : undefined),
+          clientName: (h as any).clientName || (linkedMatter ? linkedMatter.clientName : ''),
           ownerName: h.advocate || '',
           notes: `Bench: ${h.bench || '—'} · Stage: ${h.stage || '—'}`,
           isLocal: false,
@@ -232,6 +251,7 @@ export class DiaryPageComponent implements OnInit {
   }
 
   loadEvents() {
+    this.ds.loadMatters().subscribe();
     this.ds.getDiaryEvents(this.year(), this.month(), this.scope(), this.selectedMemberId())
       .subscribe(e => this.events.set(e));
     this.ds.loadTasks().subscribe();
