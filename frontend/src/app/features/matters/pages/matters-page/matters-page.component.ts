@@ -280,7 +280,7 @@ export class MattersPageComponent implements OnInit {
   }
 
   get isEditClientValid(): boolean {
-    return !!this.editForm().clientId;
+    return !!this.editForm().clientId || !!this.editForm().clientName;
   }
 
   get isEditTypeValid(): boolean {
@@ -292,7 +292,7 @@ export class MattersPageComponent implements OnInit {
   }
 
   get isEditAdvocateValid(): boolean {
-    return !!this.editForm().advocate;
+    return !!this.editForm().advocate || !!this.editForm().adv;
   }
 
   get isEditCaseNoValid(): boolean {
@@ -402,10 +402,36 @@ export class MattersPageComponent implements OnInit {
 
   openEditModal(matter: Matter) {
     this.selectedMatter.set(matter);
+
+    let clientId = matter.clientId ? Number(matter.clientId) : undefined;
+    let clientName = matter.clientName || matter.client || '';
+    if (!clientId && clientName) {
+      const matched = this.ds.clients().find(c => c.name === clientName);
+      if (matched) {
+        clientId = Number(matched.id);
+      } else if (this.ds.clients().length > 0) {
+        clientId = Number(this.ds.clients()[0].id);
+        clientName = this.ds.clients()[0].name;
+      }
+    } else if (!clientId && this.ds.clients().length > 0) {
+      clientId = Number(this.ds.clients()[0].id);
+      clientName = this.ds.clients()[0].name;
+    }
+
+    const advocate = matter.advocate || matter.adv || (this.ds.users()[0]?.name ?? '');
+
     this.editForm.set({ 
       ...matter,
+      title: matter.title || '',
+      caseNumber: matter.caseNumber || matter.caseNo || '',
+      caseNo: matter.caseNo || matter.caseNumber || '',
       cnrNumber: matter.cnrNumber || '',
-      clientId: matter.clientId ? Number(matter.clientId) : undefined,
+      clientId,
+      clientName,
+      advocate,
+      adv: advocate,
+      court: matter.court || this.courts()[0] || 'Supreme Court of India',
+      type: matter.type || this.types()[0] || 'Litigation',
       relatedMatterId: matter.relatedMatterId ? String(matter.relatedMatterId) : undefined
     });
     this.editSubmitted.set(false);
@@ -418,19 +444,31 @@ export class MattersPageComponent implements OnInit {
     if (!matter) return;
 
     this.editSubmitted.set(true);
-    if (!this.isEditFormValid) return;
+    if (!this.isEditFormValid) {
+      this.toast.error('Please fix the errors in the form before saving.');
+      return;
+    }
 
+    const formVal = this.editForm();
     const payload: Partial<Matter> = { 
-      ...this.editForm(), 
-      caseNo: this.editForm().caseNumber,
-      cnrNumber: this.editForm().cnrNumber || undefined,
-      relatedMatterId: (this.editForm().relatedMatterId && this.editForm().relatedMatterId !== '') ? String(this.editForm().relatedMatterId) : undefined
+      ...formVal, 
+      caseNo: formVal.caseNumber || formVal.caseNo || undefined,
+      cnrNumber: formVal.cnrNumber?.trim() ? formVal.cnrNumber.trim() : undefined,
+      limitationDeadline: formVal.limitationDeadline?.trim() ? formVal.limitationDeadline.trim() : undefined,
+      nextHearing: formVal.nextHearing?.trim() ? formVal.nextHearing.trim() : undefined,
+      filingDate: formVal.filingDate?.trim() ? formVal.filingDate.trim() : undefined,
+      relatedMatterId: (formVal.relatedMatterId && formVal.relatedMatterId !== '') ? String(formVal.relatedMatterId) : undefined
     };
 
-    this.ds.updateMatter(matter.id, payload).subscribe(() => {
-      this.showEditForm.set(false);
-      this.editSubmitted.set(false);
-      this.selectedMatter.set(null);
+    this.ds.updateMatter(matter.id, payload).subscribe({
+      next: () => {
+        this.showEditForm.set(false);
+        this.editSubmitted.set(false);
+        this.selectedMatter.set(null);
+      },
+      error: (err) => {
+        console.error('Error updating matter:', err);
+      }
     });
   }
 
