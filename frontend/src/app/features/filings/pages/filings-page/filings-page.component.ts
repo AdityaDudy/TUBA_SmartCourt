@@ -297,7 +297,15 @@ export class FilingsPageComponent implements OnInit {
   // CRUD operations
   onMatterChange(event: Event, mode: 'create' | 'edit') {
     const id = (event.target as HTMLSelectElement).value;
-    const m = this.ds.matters().find(x => String(x.id) === id);
+    if (!id) {
+      if (mode === 'create') {
+        this.form.update(f => ({ ...f, matterId: undefined, matterTitle: '' }));
+      } else {
+        this.editForm.update(f => ({ ...f, matterId: undefined, matterTitle: '' }));
+      }
+      return;
+    }
+    const m = this.ds.matters().find(x => String(x.id) === String(id));
     if (m) {
       if (mode === 'create') {
         this.form.update(f => ({ ...f, matterId: Number(m.id), matterTitle: m.title }));
@@ -392,7 +400,22 @@ export class FilingsPageComponent implements OnInit {
   }
 
   openEdit(f: Filing) {
-    this.editForm.set({ ...f });
+    let matterId = f.matterId ? Number(f.matterId) : undefined;
+    let matterTitle = f.matterTitle || (f as any).matter || '';
+
+    if (!matterId && matterTitle) {
+      const match = this.ds.matters().find(m => m.title?.trim().toLowerCase() === matterTitle.trim().toLowerCase());
+      if (match) {
+        matterId = Number(match.id);
+        matterTitle = match.title;
+      }
+    }
+
+    this.editForm.set({ 
+      ...f,
+      matterId,
+      matterTitle
+    });
     this.showEditModal.set(true);
     this.showDrawer.set(false);
   }
