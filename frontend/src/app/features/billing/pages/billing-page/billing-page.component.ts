@@ -420,6 +420,25 @@ export class BillingPageComponent implements OnInit {
     this.toast.success(`Exported ${count} invoices to Excel/PDF successfully.`);
   }
 
+  bulkDeleteInvoices() {
+    const list = this.bulkSelectedInvoices();
+    if (list.length === 0) return;
+    if (confirm(`Are you sure you want to delete ${list.length} selected invoice(s)?`)) {
+      this.ds.bulkDeleteInvoices(list).subscribe(() => {
+        this.bulkSelectedInvoices.set([]);
+        this.loadAllData();
+      });
+    }
+  }
+
+  deleteInvoice(inv: Invoice) {
+    if (!inv.id || !confirm(`Delete invoice ${inv.invoiceNo} permanently?`)) return;
+    this.ds.deleteInvoice(inv.id).subscribe(() => {
+      this.showDrawer.set(false);
+      this.loadAllData();
+    });
+  }
+
   // Expenses Tab Functions
   openNewExpense() {
     const firstMatter = this.ds.matters()[0];
