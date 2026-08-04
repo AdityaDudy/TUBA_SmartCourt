@@ -94,6 +94,8 @@ export const API = {
     EXPENSES: `${BASE}/billing/expenses`,
     EXPENSE_DETAIL: (id: string) => `${BASE}/billing/expenses/${id}`,
     BULK_REMIND: `${BASE}/billing/invoices/bulk-remind`,
+    DELETE: (id: string) => `${BASE}/billing/invoices/${id}`,
+    BULK_DELETE: `${BASE}/billing/invoices/bulk-delete`,
     ROLLUP_MATTER: (id: string) => `${BASE}/billing/rollup/matter/${id}`,
     ROLLUP_CLIENT: (id: string) => `${BASE}/billing/rollup/client/${id}`,
   },
