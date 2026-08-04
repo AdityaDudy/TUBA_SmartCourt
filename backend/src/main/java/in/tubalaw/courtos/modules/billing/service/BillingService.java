@@ -128,7 +128,6 @@ public class BillingService {
         repo.deleteById(id);
     }
 
-
     public Map<String, Object> summary() {
         checkOverdueInvoices();
         Map<String, Object> s = new HashMap<>();
