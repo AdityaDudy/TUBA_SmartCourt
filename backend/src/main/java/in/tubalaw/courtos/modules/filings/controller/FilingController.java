@@ -81,6 +81,18 @@ public class FilingController {
         Filing existing = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Filing", id));
         String previousStage = existing.getStage();
         boolean wasFiled = "Filed".equalsIgnoreCase(previousStage);
+        if (updates.getTitle() != null)
+            existing.setTitle(updates.getTitle());
+        if (updates.getMatterId() != null)
+            existing.setMatterId(updates.getMatterId());
+        if (updates.getMatterTitle() != null)
+            existing.setMatterTitle(updates.getMatterTitle());
+        if (updates.getCourt() != null)
+            existing.setCourt(updates.getCourt());
+        if (updates.getFilingType() != null)
+            existing.setFilingType(updates.getFilingType());
+        if (updates.getAdvocate() != null)
+            existing.setAdvocate(updates.getAdvocate());
         if (updates.getStatus() != null)
             existing.setStatus(updates.getStatus());
         if (updates.getStage() != null)
