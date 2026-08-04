@@ -120,6 +120,14 @@ public class BillingService {
         return repo.save(existing);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Invoice", id));
+        lineItemRepo.deleteAll(lineItemRepo.findAllByInvoiceId(id));
+        paymentRepo.deleteAll(paymentRepo.findAllByInvoiceId(id));
+        repo.deleteById(id);
+    }
+
     public Map<String, Object> summary() {
         checkOverdueInvoices();
         Map<String, Object> s = new HashMap<>();
