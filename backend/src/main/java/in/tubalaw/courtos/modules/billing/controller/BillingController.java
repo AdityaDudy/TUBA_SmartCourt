@@ -64,6 +64,32 @@ public class BillingController {
         return ResponseEntity.ok(ApiResponse.ok(saved));
     }
 
+    @DeleteMapping("/invoices/{id}")
+    @PreAuthorize("hasAnyAuthority('create_invoices', 'ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        billingService.delete(id);
+        SecurityScopeContext.UserSecurityDetails user = SecurityScopeContext.getCurrentUser();
+        auditLogService.log(TENANT, user != null ? user.getUserId() : null,
+                user != null ? user.getEmail() : "system",
+                "Invoice Deleted", "Invoice", id.toString(),
+                "Deleted invoice #" + id, request.getRemoteAddr(), "MEDIUM");
+        return ResponseEntity.ok(ApiResponse.ok(null, "Invoice deleted."));
+    }
+
+    @PostMapping("/invoices/bulk-delete")
+    @PreAuthorize("hasAnyAuthority('create_invoices', 'ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> bulkDelete(@RequestBody List<Long> ids) {
+        for (Long id : ids) {
+            billingService.delete(id);
+        }
+        SecurityScopeContext.UserSecurityDetails user = SecurityScopeContext.getCurrentUser();
+        auditLogService.log(TENANT, user != null ? user.getUserId() : null,
+                user != null ? user.getEmail() : "system",
+                "Bulk Invoice Delete", "Invoice", null,
+                "Deleted " + ids.size() + " invoice(s)", request.getRemoteAddr(), "HIGH");
+        return ResponseEntity.ok(ApiResponse.ok(null, "Invoices deleted successfully."));
+    }
+
     @GetMapping("/summary")
     @PreAuthorize("hasAnyAuthority('view_billing', 'view_own_billing', 'create_invoices', 'export_billing', 'ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summary() {
