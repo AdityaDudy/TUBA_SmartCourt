@@ -183,6 +183,7 @@
         <div style="display: flex; gap: 8px;">
           <button class="btn-outline btn-xs" (click)="bulkSendReminders()"><i class="fas fa-envelope"></i> Send Reminders</button>
           <button class="btn-outline btn-xs" (click)="bulkExport()"><i class="fas fa-file-excel"></i> Export Selected</button>
+          <button class="btn-outline btn-xs" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" (click)="bulkDeleteInvoices()"><i class="fas fa-trash"></i> Delete Selected</button>
           <button class="btn-xs" style="background: transparent; color: var(--txt3);" (click)="bulkSelectedInvoices.set([])">Clear</button>
         </div>
       </div>
@@ -676,6 +677,7 @@
           <button class="btn-outline" (click)="triggerReminder(inv)"><i class="fas fa-bell"></i> Send Reminder</button>
           <button class="btn-outline" (click)="printInvoice(inv)"><i class="fas fa-print"></i> Print PDF</button>
         </div>
+        <button class="btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" (click)="deleteInvoice(inv)"><i class="fas fa-trash"></i> Delete Invoice</button>
       </div>
     </div>
   </div>
