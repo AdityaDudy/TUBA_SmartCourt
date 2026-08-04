@@ -447,6 +447,27 @@ export class DataService {
     );
   }
 
+  deleteInvoice(id: number | string): Observable<void> {
+    return this.del<void>(API.BILLING.DELETE(String(id))).pipe(
+      tap(() => {
+        this.patch('billing', { items: this.billing().filter(b => String(b.id) !== String(id)) });
+        this.loadDashboardStats().subscribe();
+        this.toast.success('Invoice deleted.');
+      }),
+    );
+  }
+
+  bulkDeleteInvoices(ids: (number | string)[]): Observable<void> {
+    return this.post<void>(API.BILLING.BULK_DELETE, ids).pipe(
+      tap(() => {
+        const idStrs = ids.map(String);
+        this.patch('billing', { items: this.billing().filter(b => !idStrs.includes(String(b.id))) });
+        this.loadDashboardStats().subscribe();
+        this.toast.success(`${ids.length} invoice(s) deleted.`);
+      }),
+    );
+  }
+
   addBillingEntry(data: unknown): Observable<unknown> {
     return this.post(API.BILLING.ADD_ENTRY, data).pipe(
       tap(() => this.loadDashboardStats().subscribe()),
