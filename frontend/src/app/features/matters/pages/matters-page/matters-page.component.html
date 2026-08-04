@@ -263,6 +263,9 @@
                   <option [value]="c.id">{{ c.name }}</option>
                 }
               </select>
+              @if (editSubmitted() && !isEditClientValid) {
+                <span class="error-msg">Please select a client</span>
+              }
             </div>
             <div class="fg">
               <label>Court *</label>
@@ -270,6 +273,9 @@
                 <option value="" disabled>-- Select Court --</option>
                 @for (c of courts(); track c) { <option [value]="c">{{ c }}</option> }
               </select>
+              @if (editSubmitted() && !isEditCourtValid) {
+                <span class="error-msg">Please select a court</span>
+              }
             </div>
             <div class="fg">
               <label>Matter Type *</label>
@@ -277,6 +283,9 @@
                 <option value="" disabled>-- Select Type --</option>
                 @for (t of types(); track t) { <option [value]="t">{{ t }}</option> }
               </select>
+              @if (editSubmitted() && !isEditTypeValid) {
+                <span class="error-msg">Please select a matter type</span>
+              }
             </div>
             <div class="fg">
               <label>Practice Area</label>
@@ -292,11 +301,15 @@
             </div>
             <div class="fg">
               <label>Responsible Advocate *</label>
-              <select [value]="editForm().advocate || ''" (change)="editForm.update(f => ({...f, advocate: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditAdvocateValid">
+              <select [value]="editForm().advocate || editForm().adv || ''" (change)="editForm.update(f => ({...f, advocate: $any($event.target).value, adv: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditAdvocateValid">
+                <option value="" disabled>-- Select Advocate --</option>
                 @for (u of ds.users(); track u.id) {
                   <option [value]="u.name">{{ u.name }}</option>
                 }
               </select>
+              @if (editSubmitted() && !isEditAdvocateValid) {
+                <span class="error-msg">Please select an advocate</span>
+              }
             </div>
             <div class="fg">
               <label>Opposite Party</label>
