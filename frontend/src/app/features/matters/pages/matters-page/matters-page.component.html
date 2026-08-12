@@ -52,7 +52,7 @@
               <td>{{ m.nextHearing || m.nextHearingDate || '—' }}</td>
               <td>
                 @if (auth.hasPermission('delete_matters')) {
-                  <button class="btn-xs" style="background: #ef4444; border-color: #ef4444; color: white;" (click)="deleteMatter(m.id!); $event.stopPropagation()"><i class="fas fa-trash"></i> Delete</button>
+                 <button class="btn-xs" style="background: #ef4444; border-color: #ef4444; color: white; padding: 4px 8px; cursor: pointer;" title="Delete Matter" (click)="deleteMatter(m.id!); $event.stopPropagation()"><i class="fas fa-trash"></i></button>
                 }
               </td>
             </tr>
