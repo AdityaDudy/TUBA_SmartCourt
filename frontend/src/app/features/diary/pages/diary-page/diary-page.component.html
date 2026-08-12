@@ -310,10 +310,9 @@
           </div>
           <div class="fg">
             <label>Linked Matter</label>
-            <select
-              (change)="form.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+            <select (change)="onMatterSelect($event)">
               <option value="">— None —</option>
-              @for (m of ds.matters(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+              @for (m of ds.matters(); track m.id) { <option [value]="m.id" [selected]="('' + m.id) === ('' + form().matterId)">{{ m.title }}</option> }
             </select>
           </div>
           }
@@ -322,10 +321,9 @@
           @if (form().type === 'meeting') {
           <div class="fg">
             <label>Linked Matter</label>
-            <select
-              (change)="form.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+            <select (change)="onMatterSelect($event)">
               <option value="">— None —</option>
-              @for (m of ds.matters(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+              @for (m of ds.matters(); track m.id) { <option [value]="m.id" [selected]="('' + m.id) === ('' + form().matterId)">{{ m.title }}</option> }
             </select>
           </div>
           }
@@ -397,8 +395,7 @@
           </div>
           <div class="fg">
             <label>Linked Matter</label>
-            <select
-              (change)="editForm.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+            <select (change)="onMatterSelect($event, true)">
               <option value="">— None —</option>
               @for (m of ds.matters(); track m.id) {
               <option [value]="m.id" [selected]="('' + m.id) === ('' + editForm().matterId)">{{ m.title }}</option>
