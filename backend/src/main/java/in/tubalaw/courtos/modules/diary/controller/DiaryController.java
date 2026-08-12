@@ -123,6 +123,10 @@ public class DiaryController {
         event.setTenantId(TENANT);
         User current = getCurrentUser();
 
+        if (event.getEventDate() == null) {
+            event.setEventDate(java.time.LocalDate.now());
+        }
+
         if (current != null) {
             if (event.getOwnerId() == null) {
                 event.setOwnerId(current.getId());
