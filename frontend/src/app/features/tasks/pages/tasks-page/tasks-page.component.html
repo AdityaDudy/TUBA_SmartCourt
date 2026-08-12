@@ -1,0 +1,760 @@
+<div class="page" id="tasks-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-list-check"></i> Tasks &amp; Workflow</h1>
+      <p class="pg-sub">{{ filtered.length }} tasks · {{ tasks().filter(t => !t.done).length }} open</p>
+    </div>
+    <div class="pg-actions">
+      <app-search-input placeholder="Search tasks…" [value]="search()" (valueChange)="search.set($event)"></app-search-input>
+      <div class="view-toggles"
+        style="display: flex; border: 1px solid var(--bdr); border-radius: 8px; overflow: hidden; background: var(--card-bg); margin-right: 8px;">
+        <button class="btn-toggle" [style.background]="viewMode() === 'kanban' ? 'var(--g2)' : 'none'"
+          [style.color]="viewMode() === 'kanban' ? 'var(--txt)' : 'var(--txt3)'"
+          style="border: none; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+          (click)="viewMode.set('kanban')"><i class="fas fa-columns"></i> Kanban</button>
+        <button class="btn-toggle" [style.background]="viewMode() === 'list' ? 'var(--g2)' : 'none'"
+          [style.color]="viewMode() === 'list' ? 'var(--txt)' : 'var(--txt3)'"
+          style="border: none; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+          (click)="viewMode.set('list')"><i class="fas fa-list"></i> List</button>
+      </div>
+      <app-button variant="primary" icon="plus" (onClick)="openNewTaskModal()">New Task</app-button>
+    </div>
+  </div>
+
+  <app-filter-tabs [options]="filters" [active]="filter()" (activeChange)="filter.set($event)"></app-filter-tabs>
+
+  <!-- KANBAN BOARD VIEW -->
+  @if (viewMode() === 'kanban') {
+  <div class="kanban-board">
+    <!-- Column: To Do -->
+    <div class="kanban-column">
+      <div class="kanban-column-header">
+        <h4><i class="fas fa-circle" style="color: #9ca3af; font-size: 10px;"></i> To Do</h4>
+        <span class="kanban-count">{{ todoTasks.length }}</span>
+      </div>
+      <div class="kanban-cards">
+        @for (t of paginatedTodoTasks; track t.id) {
+        <div class="kanban-card" (click)="openDetail(t)"
+          [style.border-left]="'4px solid ' + (t.priority === 'Urgent' ? '#ef4444' : t.priority === 'High' ? '#f59e0b' : '#9ca3af')">
+          <div class="kc-title">{{ t.title }}</div>
+          <div class="kc-matter">{{ t.matterTitle }}</div>
+          <div class="kc-footer">
+            <span><i class="far fa-calendar"></i> {{ t.dueDate }}</span>
+            <span><i class="far fa-user"></i> {{ t.assignedTo }}</span>
+          </div>
+        </div>
+        } @empty {
+        <div class="kanban-empty">No tasks in To Do</div>
+        }
+      </div>
+      @if (todoTasks.length > kanbanSize) {
+      <div class="kanban-footer">
+        <button class="kb-page-btn" [disabled]="kanbanPageTodo() <= 1" (click)="kanbanPageTodo.update(p => p - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="kb-page-info">{{ kanbanPageTodo() }} / {{ totalPagesTodo }}</span>
+        <button class="kb-page-btn" [disabled]="kanbanPageTodo() >= totalPagesTodo" (click)="kanbanPageTodo.update(p => p + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      }
+    </div>
+
+    <!-- Column: Overdue -->
+    <div class="kanban-column">
+      <div class="kanban-column-header">
+        <h4><i class="fas fa-circle" style="color: #ef4444; font-size: 10px;"></i> Overdue</h4>
+        <span class="kanban-count">{{ overdueTasks.length }}</span>
+      </div>
+      <div class="kanban-cards">
+        @for (t of paginatedOverdueTasks; track t.id) {
+        <div class="kanban-card" (click)="openDetail(t)" style="border-left: 4px solid #ef4444;">
+          <div class="kc-title">{{ t.title }}</div>
+          <div class="kc-matter">{{ t.matterTitle }}</div>
+          <div class="kc-footer">
+            <span style="color: #ef4444; font-weight: 700;"><i class="far fa-calendar"></i> {{ t.dueDate }}</span>
+            <span><i class="far fa-user"></i> {{ t.assignedTo }}</span>
+          </div>
+        </div>
+        } @empty {
+        <div class="kanban-empty">No overdue tasks</div>
+        }
+      </div>
+      @if (overdueTasks.length > kanbanSize) {
+      <div class="kanban-footer">
+        <button class="kb-page-btn" [disabled]="kanbanPageOverdue() <= 1" (click)="kanbanPageOverdue.update(p => p - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="kb-page-info">{{ kanbanPageOverdue() }} / {{ totalPagesOverdue }}</span>
+        <button class="kb-page-btn" [disabled]="kanbanPageOverdue() >= totalPagesOverdue" (click)="kanbanPageOverdue.update(p => p + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      }
+    </div>
+
+    <!-- Column: Under Review -->
+    <div class="kanban-column">
+      <div class="kanban-column-header">
+        <h4><i class="fas fa-circle" style="color: #f59e0b; font-size: 10px;"></i> Under Review</h4>
+        <span class="kanban-count">{{ underReviewTasks.length }}</span>
+      </div>
+      <div class="kanban-cards">
+        @for (t of paginatedUnderReviewTasks; track t.id) {
+        <div class="kanban-card" (click)="openDetail(t)"
+          [style.border-left]="'4px solid ' + (t.priority === 'Urgent' ? '#ef4444' : t.priority === 'High' ? '#f59e0b' : '#9ca3af')">
+          <div class="kc-title">{{ t.title }}</div>
+          <div class="kc-matter">{{ t.matterTitle }}</div>
+          <div class="kc-footer">
+            <span><i class="far fa-calendar"></i> {{ t.dueDate }}</span>
+            <span><i class="far fa-user"></i> {{ t.assignedTo }}</span>
+          </div>
+        </div>
+        } @empty {
+        <div class="kanban-empty">No tasks under Review</div>
+        }
+      </div>
+      @if (underReviewTasks.length > kanbanSize) {
+      <div class="kanban-footer">
+        <button class="kb-page-btn" [disabled]="kanbanPageUnderReview() <= 1" (click)="kanbanPageUnderReview.update(p => p - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="kb-page-info">{{ kanbanPageUnderReview() }} / {{ totalPagesUnderReview }}</span>
+        <button class="kb-page-btn" [disabled]="kanbanPageUnderReview() >= totalPagesUnderReview" (click)="kanbanPageUnderReview.update(p => p + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      }
+    </div>
+
+    <!-- Column: Done -->
+    <div class="kanban-column">
+      <div class="kanban-column-header">
+        <h4><i class="fas fa-circle" style="color: #10b981; font-size: 10px;"></i> Done</h4>
+        <span class="kanban-count">{{ doneTasks.length }}</span>
+      </div>
+      <div class="kanban-cards">
+        @for (t of paginatedDoneTasks; track t.id) {
+        <div class="kanban-card" (click)="openDetail(t)"
+          [style.border-left]="'4px solid ' + (t.priority === 'Urgent' ? '#ef4444' : t.priority === 'High' ? '#f59e0b' : '#9ca3af')">
+          <div class="kc-title">{{ t.title }}</div>
+          <div class="kc-matter">{{ t.matterTitle }}</div>
+          <div class="kc-footer">
+            <span><i class="far fa-calendar"></i> {{ t.dueDate }}</span>
+            <span><i class="far fa-user"></i> {{ t.assignedTo }}</span>
+          </div>
+        </div>
+        } @empty {
+        <div class="kanban-empty">No done tasks</div>
+        }
+      </div>
+      @if (doneTasks.length > kanbanSize) {
+      <div class="kanban-footer">
+        <button class="kb-page-btn" [disabled]="kanbanPageDone() <= 1" (click)="kanbanPageDone.update(p => p - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="kb-page-info">{{ kanbanPageDone() }} / {{ totalPagesDone }}</span>
+        <button class="kb-page-btn" [disabled]="kanbanPageDone() >= totalPagesDone" (click)="kanbanPageDone.update(p => p + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- LIST VIEW (PAGINATED TABLE) -->
+  @if (viewMode() === 'list') {
+  <div class="card" style="padding: 0;">
+    <div class="list-table-container">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">Done</th>
+            <th>Task Title</th>
+            <th>Matter Link</th>
+            <th>Priority</th>
+            <th>Due Date</th>
+            <th>Assigned Advocate</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of paginatedList; track t.id) {
+          <tr [style.opacity]="t.done ? 0.6 : 1" (click)="openDetail(t)" style="cursor: pointer;">
+            <td (click)="$event.stopPropagation()">
+              <button class="tcb" [class.checked]="t.done"
+                (click)="t.done && auth.hasPermission('manage_tasks') ? toggle(t.id!) : openDetail(t)">
+                @if (t.done) { <i class="fas fa-check"></i> }
+              </button>
+            </td>
+            <td>
+              <span [style.text-decoration]="t.done ? 'line-through' : 'none'" style="font-weight: 700;">{{ t.title
+                }}</span>
+            </td>
+            <td>{{ t.matterTitle }}</td>
+            <td>
+              <app-status-badge [status]="t.priority"></app-status-badge>
+            </td>
+            <td [style.color]="isTaskOverdue(t) ? '#ef4444' : 'inherit'"
+              [style.font-weight]="isTaskOverdue(t) ? '700' : 'normal'">
+              {{ t.dueDate }}
+            </td>
+            <td>{{ t.assignedTo }}</td>
+            <td>
+              <app-status-badge [status]="isTaskOverdue(t) ? 'Overdue' : t.status"></app-status-badge>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="7" style="padding: 24px;">
+              <app-empty-state icon="circle-check" title="No tasks found" subtitle="No tasks match the current search or filter criteria."></app-empty-state>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <app-paginator [page]="currentPage()" [size]="pageSize" [total]="filtered.length" (change)="currentPage.set($event)"></app-paginator>
+  </div>
+  }
+
+  <!-- MODAL: NEW TASK FORM -->
+  @if (showForm()) {
+  <div class="modal-overlay" (click)="showForm.set(false)">
+    <div class="modal" style="max-width: 600px; width: 95%;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-plus-circle"></i> Create New Task</h3>
+        <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <!-- Title -->
+          <div class="fg fg-full">
+            <label for="task-title-input">Task Title *</label>
+            <input id="task-title-input" type="text" placeholder="E.g. Draft Written Submissions — ABC Infra v. NHAI" maxlength="200"
+              [value]="form().title || ''" (input)="form.update(f => ({...f, title: $any($event.target).value}))"
+              [style.border-color]="submitted() && (!form().title || form().title!.trim().length < 3) ? 'var(--bdr-error)' : ''">
+            @if (submitted() && (!form().title || form().title!.trim().length < 3)) { <span
+              style="font-size: 11px; color: var(--bdr-error);">Title is required (min 3 chars).</span>
+              }
+          </div>
+
+          <!-- Matter Link -->
+          <div class="fg">
+            <label for="task-matter-select">Link to Matter *</label>
+            <select id="task-matter-select" [value]="form().matterId"
+              (change)="onMatterChange($any($event.target).value)"
+              [style.border-color]="submitted() && !form().matterId ? 'var(--bdr-error)' : ''">
+              <option value="">-- Choose Matter --</option>
+              @for (m of matters(); track m.id) {
+              <option [value]="m.id">{{ m.title }}</option>
+              }
+            </select>
+            @if (submitted() && !form().matterId) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Matter linking is required.</span>
+            }
+          </div>
+
+          <!-- Task Type -->
+          <div class="fg">
+            <label for="task-type-select">Task Type *</label>
+            <select id="task-type-select" [value]="form().type"
+              (change)="form.update(f => ({...f, type: $any($event.target).value}))"
+              [style.border-color]="submitted() && !form().type ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Type --</option>
+              @for (tp of taskTypes(); track tp) {
+              <option [value]="tp">{{ tp }}</option>
+              }
+            </select>
+            @if (submitted() && !form().type) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Task type is required.</span>
+            }
+          </div>
+
+          <!-- Priority -->
+          <div class="fg">
+            <label for="task-priority-select">Priority *</label>
+            <select id="task-priority-select" [value]="form().priority"
+              (change)="form.update(f => ({...f, priority: $any($event.target).value}))"
+              [style.border-color]="submitted() && !form().priority ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Priority --</option>
+              @for (p of prios(); track p) {
+              <option [value]="p">{{ p }}</option>
+              }
+            </select>
+            @if (submitted() && !form().priority) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Priority is required.</span>
+            }
+          </div>
+
+          <!-- Due Date -->
+          <div class="fg">
+            <label for="task-due-date">Due Date *</label>
+            <input id="task-due-date" type="date" [value]="form().dueDate"
+              (change)="form.update(f => ({...f, dueDate: $any($event.target).value}))"
+              [style.border-color]="submitted() && !form().dueDate ? 'var(--bdr-error)' : ''">
+            @if (submitted() && !form().dueDate) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Due date is required.</span>
+            }
+          </div>
+
+          <!-- Responsible Advocate -->
+          <div class="fg fg-full">
+            <label for="task-advocate-select">Assign Advocate *</label>
+            <select id="task-advocate-select" [value]="form().assignedTo"
+              (change)="form.update(f => ({...f, assignedTo: $any($event.target).value}))"
+              [style.border-color]="submitted() && !form().assignedTo ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Assignee --</option>
+              @for (u of users(); track u.id) {
+              <option [value]="u.name">{{ u.name }} ({{ u.role }})</option>
+              }
+            </select>
+            @if (submitted() && !form().assignedTo) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Responsible advocate assignment is required.</span>
+            }
+          </div>
+
+          <!-- Notes -->
+          <div class="fg fg-full">
+            <label for="task-notes-textarea">Background Details & Notes</label>
+            <textarea id="task-notes-textarea" rows="3" placeholder="Enter task instructions, research guidelines, etc." maxlength="1000"
+              [value]="form().notes || ''"
+              (input)="form.update(f => ({...f, notes: $any($event.target).value}))"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="save()"><i class="fas fa-save"></i> Create Task</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: TASK DETAIL VIEW -->
+  @if (showDetailModal() && selectedTask(); as task) {
+  <div class="modal-overlay" (click)="showDetailModal.set(false)">
+    <div class="modal" style="max-width: 550px; width: 90%;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-info-circle"></i> Task Details</h3>
+        <button class="modal-close" (click)="showDetailModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <h4 style="font-size: 16px; font-weight: 800; color: var(--txt); margin: 0;">{{ task.title }}</h4>
+
+        <div
+          style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px; color: var(--txt3);">
+          <div><strong>Matter Link:</strong> <span style="color: var(--txt);">{{ task.matterTitle }}</span></div>
+          <div><strong>Task Type:</strong> <span style="color: var(--txt);">{{ task.type }}</span></div>
+          <div><strong>Priority:</strong> <span class="badge"
+              [class]="task.priority === 'Urgent' ? 'b-r' : task.priority === 'High' ? 'b-a' : 'b-g'">{{ task.priority
+              }}</span></div>
+          <div><strong>Due Date:</strong> <span [style.color]="isTaskOverdue(task) ? '#ef4444' : 'var(--txt)'"
+              [style.font-weight]="isTaskOverdue(task) ? '700' : 'normal'">{{ task.dueDate }}</span>
+          </div>
+          <div><strong>Created By:</strong> <span style="color: var(--txt);">{{ task.createdBy || 'Adv. Amit Sharma'
+              }}</span></div>
+          <div><strong>Assigned To:</strong> <span style="color: var(--txt);">{{ task.assignedTo }}</span></div>
+          <div><strong>Status:</strong> <span class="badge b-b">{{ isTaskOverdue(task) ? 'Overdue' : task.status
+              }}</span></div>
+        </div>
+
+        <div style="border-top: 1px solid var(--bdr); padding-top: 12px;">
+          <h5 style="font-size: 12.5px; font-weight: 700; color: var(--txt); margin-bottom: 6px;">Description / Notes
+          </h5>
+          <p
+            style="font-size: 12.5px; color: var(--txt2); line-height: 1.5; margin: 0; background: var(--input-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--bdr);">
+            {{ task.notes || 'No description notes attached to this task.' }}
+          </p>
+        </div>
+
+        @if (getTaskSubmissions(task).length > 0) {
+        <div style="border-top: 1px solid var(--bdr); padding-top: 12px;">
+          <h5 style="font-size: 12.5px; font-weight: 700; color: var(--txt); margin-bottom: 6px;"><i
+              class="fas fa-file-invoice"></i> Submitted Documents</h5>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            @for (doc of getTaskSubmissions(task); track doc.id) {
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; background: var(--input-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--bdr);">
+              <span style="color: var(--txt); font-weight: 600;"><i [class]="getFileIconClass(doc.title)"
+                  style="margin-right: 6px; color: var(--txt3);"></i> {{ doc.title.replace('Task Submission: ', '')
+                }}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; color: var(--txt3);">{{ doc.filedDate }}</span>
+                <button type="button" (click)="openFilingPreview(doc)"
+                  style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--bdr); background: var(--card-bg); color: var(--txt); font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                  <i class="fas fa-eye" style="color: var(--blue);"></i> View
+                </button>
+                @if (task.status === 'Under Review') {
+                <button type="button" (click)="deleteSubmission(doc, $event)"
+                  style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; border: 1px solid #ef4444; background: var(--card-bg); color: #ef4444; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+                }
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (!task.done && task.status !== 'Under Review') {
+        <div style="border-top: 1px solid var(--bdr); padding-top: 12px;">
+          <h5 style="font-size: 12.5px; font-weight: 700; color: var(--txt); margin-bottom: 6px;"><i
+              class="fas fa-paperclip"></i> Attach Submission Documents (Optional)</h5>
+          <input type="file" multiple (change)="onFileSelected($event)"
+            style="font-size: 12.5px; color: var(--txt3); width: 100%;">
+
+          @if (attachedFiles.length > 0) {
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+            @for (fileName of attachedFiles; track $index) {
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; background: var(--input-bg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--bdr);">
+              <span style="color: var(--txt);"><i [class]="getFileIconClass(fileName)"
+                  style="color: var(--txt3); margin-right: 6px;"></i> {{ fileName }}</span>
+              <button style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 4px;"
+                (click)="removeAttachedFile($index)"><i class="fas fa-trash"></i></button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+      <div class="modal-footer"
+        style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; gap: 8px;">
+          @if (auth.hasPermission('manage_tasks')) {
+          <button class="btn-outline" style="border-color: #ef4444; color: #ef4444;" (click)="deleteTask(task.id!)">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+          <button class="btn-outline" (click)="openEditTaskModal(task)">
+            <i class="fas fa-edit"></i> Edit
+          </button>
+          }
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn-outline" (click)="showDetailModal.set(false)">Close</button>
+
+          @if (!task.done) {
+          @if (task.status === 'Under Review') {
+          @if (auth.hasPermission('manage_tasks')) {
+          <button class="btn-outline" style="border-color: #ef4444; color: #ef4444;" (click)="rejectTask(task)">
+            <i class="fas fa-undo"></i> Request Changes / Reopen
+          </button>
+          <button class="btn-primary" (click)="approveTask(task)">
+            <i class="fas fa-check-circle"></i> Approve &amp; Mark Done
+          </button>
+          } @else {
+          <button class="btn-outline" disabled
+            style="opacity: 0.6; cursor: not-allowed; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-circle-notch fa-spin"></i> Awaiting Manager Review
+          </button>
+          }
+          } @else {
+          <button class="btn-primary" (click)="submitForReview(task)">
+            <i class="fas fa-paper-plane"></i> Submit for Review
+          </button>
+          }
+          } @else {
+          @if (auth.hasPermission('manage_tasks')) {
+          <button class="btn-outline" (click)="toggle(task.id!); showDetailModal.set(false)">
+            <i class="fas fa-undo"></i> Reopen Task
+          </button>
+          }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+
+
+  <!-- MODAL: EDIT TASK FORM -->
+  @if (showEditTaskForm() && editTaskForm(); as taskFormObj) {
+  <div class="modal-overlay" (click)="showEditTaskForm.set(false)">
+    <div class="modal" style="max-width: 600px; width: 95%;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-edit"></i> Edit Task Details</h3>
+        <button class="modal-close" (click)="showEditTaskForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <!-- Title -->
+          <div class="fg fg-full">
+            <label for="edit-task-title-input">Task Title *</label>
+            <input id="edit-task-title-input" type="text"
+              placeholder="E.g. Draft Written Submissions — ABC Infra v. NHAI" [value]="taskFormObj.title || ''"
+              (input)="editTaskForm.update(f => ({...f, title: $any($event.target).value}))"
+              [style.border-color]="editTaskSubmitted() && (!taskFormObj.title || taskFormObj.title!.trim().length < 3) ? 'var(--bdr-error)' : ''">
+            @if (editTaskSubmitted() && (!taskFormObj.title || taskFormObj.title!.trim().length < 3)) { <span
+              style="font-size: 11px; color: var(--bdr-error);">Title is required (min 3 chars).</span>
+              }
+          </div>
+
+          <!-- Matter Link -->
+          <div class="fg">
+            <label for="edit-task-matter-select">Link to Matter *</label>
+            <select id="edit-task-matter-select" [value]="taskFormObj.matterId"
+              (change)="onEditMatterChange($any($event.target).value)"
+              [style.border-color]="editTaskSubmitted() && !taskFormObj.matterId ? 'var(--bdr-error)' : ''">
+              <option value="">-- Choose Matter --</option>
+              @for (m of matters(); track m.id) {
+              <option [value]="m.id">{{ m.title }}</option>
+              }
+            </select>
+            @if (editTaskSubmitted() && !taskFormObj.matterId) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Matter linking is required.</span>
+            }
+          </div>
+
+          <!-- Task Type -->
+          <div class="fg">
+            <label for="edit-task-type-select">Task Type *</label>
+            <select id="edit-task-type-select" [value]="taskFormObj.type"
+              (change)="editTaskForm.update(f => ({...f, type: $any($event.target).value}))"
+              [style.border-color]="editTaskSubmitted() && !taskFormObj.type ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Type --</option>
+              @for (tp of taskTypes(); track tp) {
+              <option [value]="tp">{{ tp }}</option>
+              }
+            </select>
+            @if (editTaskSubmitted() && !taskFormObj.type) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Task type is required.</span>
+            }
+          </div>
+
+          <!-- Priority -->
+          <div class="fg">
+            <label for="edit-task-priority-select">Priority *</label>
+            <select id="edit-task-priority-select" [value]="taskFormObj.priority"
+              (change)="editTaskForm.update(f => ({...f, priority: $any($event.target).value}))"
+              [style.border-color]="editTaskSubmitted() && !taskFormObj.priority ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Priority --</option>
+              @for (p of prios(); track p) {
+              <option [value]="p">{{ p }}</option>
+              }
+            </select>
+            @if (editTaskSubmitted() && !taskFormObj.priority) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Priority is required.</span>
+            }
+          </div>
+
+          <!-- Due Date -->
+          <div class="fg">
+            <label for="edit-task-due-date">Due Date *</label>
+            <input id="edit-task-due-date" type="date" [value]="taskFormObj.dueDate"
+              (change)="editTaskForm.update(f => ({...f, dueDate: $any($event.target).value}))"
+              [style.border-color]="editTaskSubmitted() && !taskFormObj.dueDate ? 'var(--bdr-error)' : ''">
+            @if (editTaskSubmitted() && !taskFormObj.dueDate) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Due date is required.</span>
+            }
+          </div>
+
+          <!-- Responsible Advocate -->
+          <div class="fg fg-full">
+            <label for="edit-task-advocate-select">Assign Advocate *</label>
+            <select id="edit-task-advocate-select" [value]="taskFormObj.assignedTo"
+              (change)="editTaskForm.update(f => ({...f, assignedTo: $any($event.target).value}))"
+              [style.border-color]="editTaskSubmitted() && !taskFormObj.assignedTo ? 'var(--bdr-error)' : ''">
+              <option value="">-- Select Assignee --</option>
+              @for (u of users(); track u.id) {
+              <option [value]="u.name">{{ u.name }} ({{ u.role }})</option>
+              }
+            </select>
+            @if (editTaskSubmitted() && !taskFormObj.assignedTo) {
+            <span style="font-size: 11px; color: var(--bdr-error);">Responsible advocate assignment is required.</span>
+            }
+          </div>
+
+          <!-- Notes -->
+          <div class="fg fg-full">
+            <label for="edit-task-notes-textarea">Background Details & Notes</label>
+            <textarea id="edit-task-notes-textarea" rows="3"
+              placeholder="Enter task instructions, research guidelines, etc." [value]="taskFormObj.notes || ''"
+              (input)="editTaskForm.update(f => ({...f, notes: $any($event.target).value}))"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showEditTaskForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="updateTask()"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal: Document Quick Preview (Shared details panel) -->
+  @if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+  <div class="modal-overlay" style="z-index: 1300;" (click)="showPreviewModal.set(false)">
+    <div class="modal" style="width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;"
+      (click)="$event.stopPropagation()">
+      <div class="modal-header"
+        style="border-bottom: 1px solid var(--bdr); padding: 12px 20px; background: var(--bg2);">
+        <div>
+          <h3
+            style="font-size: 14.5px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i> {{ previewDoc.name }}
+          </h3>
+          <span class="badge b-g" style="margin-top: 4px;">{{ previewDoc.docType || 'Court Document' }}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="btn-xs btn-outline" style="padding: 6px 12px; font-size: 11px;" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+          </button>
+          <a [href]="previewDoc.s3Url" download target="_blank" class="btn-xs btn-primary"
+            style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fas fa-download"></i> Download
+          </a>
+          <button class="modal-close" style="position: static; margin-left: 10px;"
+            (click)="showPreviewModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
+      <!-- PDF Reader Toolbar Simulation -->
+      <div
+        style="background: #334155; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid #1e293b;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i
+              class="fas fa-chevron-left"></i></button>
+          <span style="font-weight: 600;">Page 1 of 1</span>
+          <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i
+              class="fas fa-chevron-right"></i></button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i
+              class="fas fa-search-minus"></i></button>
+          <span style="font-family: monospace;">100%</span>
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i
+              class="fas fa-search-plus"></i></button>
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; margin-left: 10px;"><i
+              class="fas fa-expand"></i></button>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+          Source: {{ previewDoc.source || 'Secure Vault' }} | Verified
+        </div>
+      </div>
+
+      <div class="modal-body"
+        style="flex: 1; overflow-y: auto; background: #475569; padding: 24px; display: flex; flex-direction: column; align-items: center; min-height: 480px; gap: 20px;">
+        @if (getPreviewDetails(); as details) {
+        @if (details.isImage) {
+        @if (details.rawUrl) {
+        <img [src]="details.rawUrl"
+          style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;" />
+        } @else {
+        <div
+          style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+          <i class="fas fa-image" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+          <p style="margin: 0; font-weight: 700;">No preview available for this image.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+        </div>
+        }
+        } @else if (details.isPdf) {
+        @if (details.localUrl) {
+        <iframe [src]="details.localUrl"
+          style="width: 100%; height: 75vh; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;"></iframe>
+        } @else {
+        <div
+          style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+          <i class="fas fa-file-pdf" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+          <p style="margin: 0; font-weight: 700;">No preview available for this PDF.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+        </div>
+        }
+        } @else if (details.isTemplateInstance) {
+        <!-- Simulated A4 Legal Page with dynamic data -->
+        <div
+          style="width: 100%; max-width: 620px; min-height: 800px; background: #ffffff; padding: 48px 56px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; flex-direction: column; font-family: 'Times New Roman', Times, serif; color: #1e293b; position: relative; border-radius: 4px; box-sizing: border-box; text-align: left;">
+          <div
+            style="position: absolute; top: 40%; left: 15%; right: 15%; transform: rotate(-30deg); font-size: 48px; font-weight: 800; color: rgba(220, 38, 38, 0.06); text-transform: uppercase; text-align: center; border: 8px double rgba(220, 38, 38, 0.06); padding: 10px; pointer-events: none; font-family: sans-serif; letter-spacing: 2px;">
+            TUBA SmartCourt<br>Official Copy
+          </div>
+          <div
+            style="text-align: center; border-bottom: 2px double #1e293b; padding-bottom: 12px; margin-bottom: 24px;">
+            <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">
+              Before the Honorable Court of Jurisdiction</h2>
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">At New Delhi,
+              India</span>
+          </div>
+          <div
+            style="font-size: 12.5px; line-height: 1.6; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; border-radius: 6px;">
+            <div>
+              <strong>PETITIONER / PLAINTIFF:</strong><br>
+              <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.clientName }}</span><br>
+              <span style="font-size: 10.5px; color: #64748b;">Represented by Lead Counsel</span>
+            </div>
+            <div
+              style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 10px;">
+              V / S</div>
+            <div>
+              <strong>RESPONDENT / DEFENDANT:</strong><br>
+              <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.matterTitle }}</span><br>
+              <span style="font-size: 10.5px; color: #64748b;">Represented by Standing Counsel</span>
+            </div>
+          </div>
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h3
+              style="font-size: 13px; font-weight: 800; text-decoration: underline; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">
+              SUBMISSIONS ON BEHALF OF THE PETITIONER: {{ details.name }}
+            </h3>
+          </div>
+          <div style="font-size: 13px; line-height: 1.8; flex: 1; text-align: justify; color: #334155;">
+            <p style="margin: 0 0 14px 0;"><strong>MOST RESPECTFULLY SHOWETH:</strong></p>
+            <p style="margin: 0 0 14px 0;">
+              1. That the present submissions are being filed in support of the petition challenging the arbitrary
+              guidelines and directives issued. The document, specifically identified as <strong>{{ details.name
+                }}</strong>, contains direct reference to input tax logs and verification certificates.
+            </p>
+            <p style="margin: 0 0 14px 0;">
+              2. That the file metadata records this as a <strong>{{ details.type || 'Affidavit / Submission'
+                }}</strong> document, filed on date <strong>{{ details.date || '2026-07-14' }}</strong> and processed
+              under standard digital encryption keys.
+            </p>
+            <p style="margin: 0 0 14px 0;">
+              3. That the uploader signature certificate belongs to <strong>Adv. Amit Sharma</strong>, who confirms that
+              the contents are scanned, OCR indexed, and validated against conflict records.
+            </p>
+            <p style="margin: 0 0 14px 0;">
+              4. That the Petitioners pray this Honorable Court may be pleased to take the document on record and grant
+              interim relief as requested in the application.
+            </p>
+          </div>
+          <div
+            style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; border-top: 1.5px solid #cbd5e1; padding-top: 16px;">
+            <div>
+              <div
+                style="border: 2.5px solid #dc2626; color: #dc2626; font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 6px 12px; border-radius: 6px; transform: rotate(-8deg); letter-spacing: 0.8px; font-family: sans-serif; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: rgba(220,38,38,0.02); text-align: center; line-height: 1.3;">
+                COURT RECORDS<br>
+                <span style="font-size: 8px; font-weight: 500;">DIGITALLY SECURED</span><br>
+                <span style="font-size: 8.5px; font-weight: 700;">ID: {{ details.id || 'VAULT-991' }}</span>
+              </div>
+            </div>
+            <div
+              style="text-align: right; font-size: 12.5px; color: #0f172a; font-family: sans-serif; line-height: 1.5;">
+              <span
+                style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 15px; color: #475569; display: block; margin-bottom: 6px;">Amit
+                Sharma</span>
+              <strong>Advocate for Petitioner</strong><br>
+              <span style="font-size: 10.5px; color: #64748b;">Bar Council No: D/1049/2018</span>
+            </div>
+          </div>
+        </div>
+        } @else {
+        <div
+          style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+          <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+          <p style="margin: 0; font-weight: 700;">No preview available for this document type.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+        </div>
+        }
+        }
+      </div>
+    </div>
+  </div>
+  }
+</div>

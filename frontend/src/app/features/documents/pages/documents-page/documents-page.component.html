@@ -1,0 +1,417 @@
+<div class="page" id="documents-page">
+  <!-- Header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-folder"></i> Document Vault</h1>
+      <p class="pg-sub">Digital Case Records & Compliance Repository</p>
+    </div>
+    <div class="pg-actions-group">
+      <!-- Main Category Tabs -->
+      <div class="segmented-control">
+        <button class="seg-btn" [class.active]="activeTab() === 'explorer'" (click)="activeTab.set('explorer')">
+          <i class="fas fa-folder-tree"></i> Explorer
+        </button>
+        <button class="seg-btn" [class.active]="activeTab() === 'recent'" (click)="activeTab.set('recent')">
+          <i class="fas fa-history"></i> Recent Files
+        </button>
+      </div>
+
+      <app-button variant="primary" icon="cloud-upload-alt" (onClick)="openUpload()">Upload Document</app-button>
+    </div>
+  </div>
+
+  <!-- Main Grid Layout -->
+  <div class="dms-layout-clean">
+    <!-- Main Explorer Panel -->
+    <div class="dms-main-full">
+      
+      @if (activeTab() === 'explorer') {
+        <!-- Explorer Breadcrumbs -->
+        <div class="breadcrumb-bar">
+          <div class="bc-trail">
+            <span class="bc-item link" (click)="resetPath()"><i class="fas fa-database"></i> Vault Root</span>
+            @for (segment of activePath(); track segment.id; let idx = $index) {
+              <span class="bc-separator">/</span>
+              <span class="bc-item" 
+                    [class.link]="idx < activePath().length - 1"
+                    (click)="navigateToBreadcrumb(idx)">
+                <i class="fas" [class]="segment.type === 'client' ? 'fa-user' : 'fa-folder-open'"></i>
+                {{ segment.name }}
+              </span>
+            }
+          </div>
+          @if (activePath().length > 0) {
+            <button class="btn-xs-outline" (click)="navigateToBreadcrumb(activePath().length - 2)"><i class="fas fa-arrow-up"></i> Up One Level</button>
+          }
+        </div>
+
+        <!-- Toolbar Panel -->
+        <div class="explorer-toolbar card">
+          <div class="tb-left">
+            <!-- Hierarchy toggle (Only visible at root level) -->
+            @if (activePath().length === 0) {
+              <div class="mode-toggle-group">
+                <label class="mode-label">
+                  <input type="radio" name="mode" value="client" [checked]="groupByMode() === 'client'" (change)="groupByMode.set('client')">
+                  <span><i class="fas fa-users"></i> By Client</span>
+                </label>
+                <label class="mode-label">
+                  <input type="radio" name="mode" value="matter" [checked]="groupByMode() === 'matter'" (change)="groupByMode.set('matter')">
+                  <span><i class="fas fa-folder-open"></i> By Matter</span>
+                </label>
+              </div>
+            } @else {
+              <div class="current-level-tag">
+                <i class="fas fa-info-circle"></i> Viewing inside <strong>{{ activePath()[activePath().length - 1].name }}</strong>
+              </div>
+            }
+
+            <!-- Search input -->
+            <app-search-input placeholder="Search files/folders…" [value]="searchQuery()" (valueChange)="searchQuery.set($event)"></app-search-input>
+
+            <!-- Doc Type dropdown filter (Only visible when viewing documents list inside a Matter) -->
+            @if (activePath().length > 0 && activePath()[activePath().length - 1].type === 'matter') {
+              <div class="filter-dropdown">
+                <select [value]="docTypeFilter()" (change)="docTypeFilter.set($any($event.target).value)">
+                  <option value="">-- All Doc Types --</option>
+                  @for (dt of docTypes(); track dt) {
+                    <option [value]="dt">{{ dt }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Hide Empty folders checkbox toggle -->
+            @if (activePath().length === 0 || (activePath().length === 1 && activePath()[0].type === 'client')) {
+              <label class="cb-toggle">
+                <input type="checkbox" [checked]="hideEmptyFolders()" (change)="hideEmptyFolders.set($any($event.target).checked)">
+                <span>Hide empty folders</span>
+              </label>
+            }
+          </div>
+
+          <div class="tb-right">
+            <!-- Sort dropdown -->
+            <div class="sort-selector">
+              <select [value]="sortMode()" (change)="sortMode.set($any($event.target).value)">
+                <option value="name">Sort by Name</option>
+                <option value="count">Sort by File Count</option>
+                <option value="date">Sort by Last Updated</option>
+              </select>
+            </div>
+
+            <!-- Grid vs List layout switchers -->
+            <div class="view-switch">
+              <button class="vw-btn" [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" title="Grid View"><i class="fas fa-th-large"></i></button>
+              <button class="vw-btn" [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')" title="List View"><i class="fas fa-bars"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Document Viewer Body -->
+        <!-- IF WE ARE VIEWING AN ACTIVE MATTER DETAIL (showing documents) -->
+        @if (activePath().length > 0 && activePath()[activePath().length - 1].type === 'matter') {
+          <div class="card" style="padding: 16px;">
+            <div class="explorer-card-header">
+              <h3><i class="fas fa-file-invoice"></i> Matter Documents Checklist</h3>
+            </div>
+
+            @if (viewMode() === 'grid') {
+              <div class="files-grid">
+                @for (file of filteredFiles(); track file.id) {
+                  <div class="file-card" (click)="openDocPreview(file)" style="cursor: pointer;">
+                    <div class="fc-icon"><i class="fas" [class]="file.icon || 'fa-file-pdf'"></i></div>
+                    <div class="fc-info">
+                      <div class="fc-name" [title]="file.name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                      <div class="fc-meta">Type: {{ file.type }}</div>
+                      <div class="fc-date">Uploaded: {{ file.date }}</div>
+                    </div>
+                    <div class="fc-footer">
+                      <span class="badge b-g">{{ file.source }}</span>
+                      <div style="display: flex; gap: 4px;">
+                        <button class="btn-xs btn-outline" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                        @if (auth.hasPermission('delete_matters') && file.id) {
+                          <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2);" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No documents found matching the filter query.</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <!-- List View -->
+              <div class="files-list">
+                @for (file of filteredFiles(); track file.id) {
+                  <div class="file-row" (click)="openDocPreview(file)" style="cursor: pointer;">
+                    <div class="file-info">
+                      <i class="fas file-icon" [class]="file.icon || 'fa-file-pdf'"></i>
+                      <div class="file-details">
+                        <div class="file-name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                        <div class="file-meta">{{ file.type }} • Source: {{ file.source }} • {{ file.date }}</div>
+                      </div>
+                    </div>
+                    <div class="file-badges">
+                      @for (t of file.tags; track t) {
+                        <span class="badge b-t" style="font-size: 10px;">{{ t }}</span>
+                      }
+                      <button class="btn-xs" style="margin-left: 10px;" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                      @if (auth.hasPermission('delete_matters') && file.id) {
+                        <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); margin-left: 4px;" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No documents found matching the filter query.</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- FOLDER GRID/LIST EXPLORER -->
+          <div class="card" style="padding: 16px;">
+            <div class="explorer-card-header">
+              <h3>
+                <i class="fas" [class]="groupByMode() === 'client' ? 'fa-users' : 'fa-folder-open'"></i>
+                {{ activePath().length === 1 ? 'Client\'s Cases' : (groupByMode() === 'client' ? 'Client Workspace Folders' : 'Matter Folders') }}
+              </h3>
+            </div>
+
+            @if (viewMode() === 'grid') {
+              <div class="folders-grid">
+                @for (folder of displayedFolders(); track folder.id) {
+                  <div class="folder-card" 
+                       [class.empty-folder]="isFolderEmpty(folder)" 
+                       (click)="openFolder(folder.type, folder.id, folder.name)">
+                    <div class="fd-icon-box">
+                      <i class="fas" [class]="isFolderEmpty(folder) ? 'fa-folder-open-empty far fa-folder' : 'fa-folder'"></i>
+                    </div>
+                    <div class="fd-info">
+                      <div class="fd-name" [title]="folder.name">{{ folder.name }}</div>
+                      <div class="fd-count">{{ folder.count }} files · Updated {{ folder.lastUpdated }}</div>
+                    </div>
+                    <button class="btn-xs btn-open">Open</button>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No workspaces/folders found matching your selection.</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <!-- List View -->
+              <div class="folders-list">
+                @for (folder of displayedFolders(); track folder.id) {
+                  <div class="folder-row-item" 
+                       [class.empty-folder]="isFolderEmpty(folder)" 
+                       (click)="openFolder(folder.type, folder.id, folder.name)">
+                    <div class="fr-left">
+                      <i class="fas folder-icon-list" [class]="isFolderEmpty(folder) ? 'far fa-folder' : 'fas fa-folder'"></i>
+                      <div>
+                        <div class="fr-name">{{ folder.name }}</div>
+                        <div class="fr-meta">Updated: {{ folder.lastUpdated }}</div>
+                      </div>
+                    </div>
+                    <div class="fr-right">
+                      <span class="badge b-g">{{ folder.count }} files</span>
+                      <button class="btn-xs btn-open">Open</button>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty-explorer">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No workspaces/folders found matching your selection.</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          
+          <!-- Client's Direct Documents -->
+          @if (activePath().length === 1 && activePath()[0].type === 'client' && filteredFiles().length > 0) {
+            <div class="card" style="padding: 16px; margin-top: 20px;">
+              <div class="explorer-card-header">
+                <h3><i class="fas fa-file-alt"></i> Client's Direct Documents</h3>
+              </div>
+              @if (viewMode() === 'grid') {
+                <div class="files-grid">
+                  @for (file of filteredFiles(); track file.id) {
+                    <div class="file-card" (click)="openDocPreview(file)" style="cursor: pointer;">
+                      <div class="fc-icon"><i class="fas" [class]="file.icon || 'fa-file-pdf'"></i></div>
+                      <div class="fc-info">
+                        <div class="fc-name" [title]="file.name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                        <div class="fc-meta">Type: {{ file.type }}</div>
+                        <div class="fc-date">Uploaded: {{ file.date }}</div>
+                      </div>
+                      <div class="fc-footer">
+                        <span class="badge b-g">{{ file.source }}</span>
+                        <div style="display: flex; gap: 4px;">
+                          <button class="btn-xs btn-outline" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                          @if (auth.hasPermission('delete_matters') && file.id) {
+                            <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2);" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="files-list">
+                  @for (file of filteredFiles(); track file.id) {
+                    <div class="file-row" (click)="openDocPreview(file)" style="cursor: pointer;">
+                      <div class="file-info">
+                        <i class="fas file-icon" [class]="file.icon || 'fa-file-pdf'"></i>
+                        <div class="file-details">
+                          <div class="file-name" style="text-decoration: underline; font-weight: 700;">{{ file.name }}</div>
+                          <div class="file-meta">{{ file.type }} • Source: {{ file.source }} • {{ file.date }}</div>
+                        </div>
+                      </div>
+                      <div class="file-badges">
+                        @for (t of file.tags; track t) {
+                          <span class="badge b-t" style="font-size: 10px;">{{ t }}</span>
+                        }
+                        <button class="btn-xs" style="margin-left: 10px;" title="Download File" (click)="$event.stopPropagation()"><i class="fas fa-download"></i></button>
+                        @if (auth.hasPermission('delete_matters') && file.id) {
+                          <button class="btn-xs btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); margin-left: 4px;" title="Delete File" (click)="deleteDoc(file, $event)"><i class="fas fa-trash"></i></button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      } @else {
+        <!-- Recent Documents Panel -->
+        <div class="card" style="padding: 16px;">
+          <h3 style="margin-bottom: 16px; font-size: 15px; font-weight: 700;"><i class="fas fa-clock-rotate-left"></i> Recent Documents</h3>
+          <div class="files-list">
+            @for (d of recent(); track d.name) {
+              <div class="doc-item-recent" (click)="openDocPreview(d)" style="cursor: pointer;">
+                <div class="dir-left">
+                  <div class="di-icon" [style.background]="d.bg">
+                    <i class="fas" [class]="d.icon" [style.color]="d.tc"></i>
+                  </div>
+                  <div class="di-body">
+                    <div class="di-name">{{ d.name }}</div>
+                    <div class="di-meta">{{ d.meta }}</div>
+                  </div>
+                </div>
+                <span class="badge" [class]="d.tag">{{ d.label }}</span>
+              </div>
+            } @empty {
+              <div class="empty-explorer">
+                <i class="fas fa-clock"></i>
+                <p>No recent documents found.</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Upload Modal with drag & drop zone -->
+  @if (showUploadModal()) {
+    <div class="modal-overlay" (click)="showUploadModal.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-cloud-upload-alt"></i> SafeUpload Console</h3>
+          <button class="modal-close" (click)="showUploadModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            
+            <!-- Drag and Drop Dropzone -->
+            <div class="fg fg-full">
+              <div class="dropzone-box" 
+                   [class.dragging]="isDragging()" 
+                   (dragover)="onDragOver($event)" 
+                   (dragleave)="onDragLeave($event)" 
+                   (drop)="onDrop($event)"
+                   (click)="fileSelector.click()">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 32px; color: var(--primary); margin-bottom: 8px;"></i>
+                <p class="dropzone-text">Drag and drop file here, or click to choose from system</p>
+                <span class="dropzone-sub">PDF, DOCX, XLSX, images up to 50MB</span>
+                <input type="file" #fileSelector (change)="onFileChange($event)" style="display:none">
+              </div>
+              @if (selectedFile()) {
+                <div class="selected-file-banner">
+                  <i class="fas fa-file-alt"></i>
+                  <span class="file-name-text">{{ selectedFile()?.name }}</span>
+                  <span class="file-size-text">({{ (selectedFile()?.size || 0) / 1024 | number:'1.0-1' }} KB)</span>
+                </div>
+              }
+            </div>
+
+            <!-- Mandatory Classifications -->
+            <div class="fg">
+              <label>Link to Client *</label>
+              <select [value]="uploadForm().clientId" (change)="uploadForm.update(f => ({...f, clientId: $any($event.target).value, matterId: ''}))">
+                <option value="">-- Select Client --</option>
+                @for (c of clientsList(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Link to Case / Matter *</label>
+              <select [value]="uploadForm().matterId" (change)="uploadForm.update(f => ({...f, matterId: $any($event.target).value}))">
+                <option value="" disabled>-- Select Matter --</option>
+                @for (m of uploadMattersFiltered(); track m.id) {
+                  <option [value]="m.id">{{ m.title }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Document Type *</label>
+              <select [value]="uploadForm().docType" (change)="uploadForm.update(f => ({...f, docType: $any($event.target).value}))">
+                @for (dt of docTypes(); track dt) {
+                  <option [value]="dt">{{ dt }}</option>
+                }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Tags (comma-separated)</label>
+              <input type="text" [value]="uploadForm().tags" (input)="uploadForm.update(f => ({...f, tags: $any($event.target).value}))" placeholder="e.g. Affidavit, Signed, Copy">
+            </div>
+          </div>
+
+          <!-- Upload Progress Indicator -->
+          @if (isUploading()) {
+            <div class="upload-progress-wrapper">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="uploadProgress()"></div>
+              </div>
+              <div class="progress-meta">Uploading & Indexing... {{ uploadProgress() }}%</div>
+            </div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showUploadModal.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="!selectedFile() || !uploadForm().matterId || isUploading()" (click)="performUpload()"><i class="fas fa-cloud-upload"></i> Upload</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+  <!-- Modal: Document Quick Preview (Shared details panel) -->
+  @if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+    <app-document-preview-modal
+      [doc]="previewDoc"
+      [details]="getPreviewDetails()"
+      (close)="showPreviewModal.set(false)"
+      (delete)="deleteDoc($event)">
+    </app-document-preview-modal>
+  }
+

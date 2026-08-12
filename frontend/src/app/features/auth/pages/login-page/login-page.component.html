@@ -1,0 +1,149 @@
+<div id="login-screen">
+  <!-- LEFT PANEL -->
+  <div class="l-left">
+    <div class="l-brand">
+      <div class="l-brand-icon">⚖</div>
+      <div>
+        <div class="l-brand-name">TUBA Smart Court</div>
+        <div class="l-brand-sub">CourtOS Platform</div>
+      </div>
+    </div>
+
+    <!-- LOGIN VIEW -->
+    @if (view() === 'login') {
+      <div>
+        <div class="l-h">Welcome back</div>
+        <div class="l-s">Sign in to your intelligent legal workspace — matters, hearings and cause lists unified.</div>
+
+        @if (errorMsg()) {
+          <div class="auth-error">
+            <i class="fa-solid fa-exclamation-circle"></i> {{ errorMsg() }}
+          </div>
+        }
+
+        <div class="l-fg">
+          <label class="l-lbl">Email / User ID</label>
+          <div class="l-wrap">
+            <i class="fas fa-envelope l-ic"></i>
+            <input class="l-inp" type="email" id="login-email"
+                   [value]="email()" (input)="email.set($any($event.target).value)"
+                   placeholder="you@tubalaw.com">
+          </div>
+        </div>
+
+        <div class="l-fg">
+          <label class="l-lbl">Password</label>
+          <div class="l-wrap">
+            <i class="fas fa-lock l-ic"></i>
+            <input class="l-inp" [type]="showPass() ? 'text' : 'password'" id="login-password"
+                   [value]="password()" (input)="password.set($any($event.target).value)"
+                   (keyup.enter)="doLogin()">
+            <i class="fas l-tog" [class.fa-eye]="!showPass()" [class.fa-eye-slash]="showPass()"
+               (click)="showPass.set(!showPass())"></i>
+          </div>
+        </div>
+
+        <div class="l-row">
+          <label class="l-chk"><input type="checkbox" checked><span>Remember me</span></label>
+          <a href="#" class="l-link" (click)="$event.preventDefault(); view.set('forgot')">Forgot password?</a>
+        </div>
+
+        <button class="l-btn" id="login-btn" (click)="doLogin()" [disabled]="loading()">
+          @if (loading()) {
+            <i class="fas fa-circle-notch fa-spin"></i> Signing in…
+          } @else {
+            <i class="fas fa-sign-in-alt"></i> Sign In to CourtOS
+          }
+        </button>
+
+      </div>
+    }
+
+    <!-- FORGOT VIEW -->
+    @if (view() === 'forgot') {
+      <div>
+        <button class="l-back" (click)="view.set('login')">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+        <div class="l-h">Reset Password</div>
+        <div class="l-s">Enter your registered email to receive a reset OTP.</div>
+        <div class="l-fg">
+          <label class="l-lbl">Email</label>
+          <div class="l-wrap">
+            <i class="fas fa-envelope l-ic"></i>
+            <input class="l-inp" type="email" [value]="email()"
+                   (input)="email.set($any($event.target).value)" placeholder="you@tubalaw.com">
+          </div>
+        </div>
+        <button class="l-btn" (click)="doForgot()">
+          <i class="fas fa-paper-plane"></i> Send OTP
+        </button>
+      </div>
+    }
+
+    <!-- OTP VIEW -->
+    @if (view() === 'otp') {
+      <div>
+        <button class="l-back" (click)="view.set('login')">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+        <div class="l-h">Enter OTP</div>
+        <div class="l-s">6-digit OTP sent to <strong>{{ email() }}</strong>. Valid 10 minutes.</div>
+        <div class="l-fg">
+          <label class="l-lbl">OTP Code</label>
+          <input class="l-inp" type="text" maxlength="6" style="letter-spacing:0.5em;font-size:20px;text-align:center"
+                 [value]="otp()" (input)="otp.set($any($event.target).value)">
+        </div>
+        <button class="l-btn" (click)="doVerifyOtp()">
+          <i class="fas fa-check-circle"></i> Verify & Sign In
+        </button>
+      </div>
+    }
+
+    <div class="l-footer">
+      AES-256 Encrypted · ISO 27001 · DPDP Act Ready<br>
+      <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Support</a>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="l-right">
+    <div style="position:relative;z-index:1;max-width:440px">
+      <div style="text-align:center">
+        <div class="lr-tag">
+          <i class="fas fa-gavel" style="color:#fde68a;font-size:12px"></i>
+          <span>India's Smart Court OS Platform</span>
+        </div>
+      </div>
+      <div class="lr-h2">One Platform for Every Matter, Every Court, Every Hearing.</div>
+      <div class="lr-p">TUBA Smart Court unifies your entire legal practice — Supreme Court to District Tribunals — into one intelligent workspace for Indian advocates.</div>
+      <div class="lr-features">
+        <div class="lr-fc">
+          <i class="fas fa-gavel"></i>
+          <div class="fc-t">Unified Court Tracking</div>
+          <div class="fc-s">SC · HC · NCLT · ITAT · RERA · 20+ Forums</div>
+        </div>
+        <div class="lr-fc">
+          <i class="fas fa-robot"></i>
+          <div class="fc-t">AI Legal Assistant</div>
+          <div class="fc-s">Matter summaries, research & drafting</div>
+        </div>
+        <div class="lr-fc">
+          <i class="fas fa-calendar-check"></i>
+          <div class="fc-t">Smart Cause Lists</div>
+          <div class="fc-s">Auto-fetched daily with WhatsApp alerts</div>
+        </div>
+        <div class="lr-fc">
+          <i class="fas fa-shield-alt"></i>
+          <div class="fc-t">Bank-grade Security</div>
+          <div class="fc-s">MFA · AES-256 · Audit Trail · DPDP Ready</div>
+        </div>
+      </div>
+      <div class="lr-stats">
+        <div class="lr-stat"><div class="ls-v">500+</div><div class="ls-l">Advocates</div></div>
+        <div class="lr-stat"><div class="ls-v">50K+</div><div class="ls-l">Matters Tracked</div></div>
+        <div class="lr-stat"><div class="ls-v">99.9%</div><div class="ls-l">Uptime</div></div>
+      </div>
+    </div>
+  </div>
+</div>

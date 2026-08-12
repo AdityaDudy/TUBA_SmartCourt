@@ -1,0 +1,150 @@
+// ============================================================
+//  TUBA SmartCourt — CourtOS
+//  Global SCSS Mixins
+// ============================================================
+@use 'variables' as v;
+
+// --- Flex Utilities ---
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+// --- Card Base ---
+@mixin card-base {
+  background: var(--bgc);
+  border: 1px solid var(--bdr);
+  border-radius: var(--rl, #{v.$rl});
+  box-shadow: var(--sh);
+}
+
+// --- Badge Variant ---
+@mixin badge-variant($bg, $color) {
+  background: $bg;
+  color: $color;
+}
+
+// --- Button Variant ---
+@mixin btn-variant($bg, $color, $shadow: none) {
+  background: $bg;
+  color: $color;
+  @if $shadow != none {
+    box-shadow: $shadow;
+  }
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+// --- Scrollbar Custom ---
+@mixin custom-scrollbar($width: 5px) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--bdr2);
+    border-radius: 3px;
+  }
+}
+
+// --- Truncate Text ---
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// --- Respond To Breakpoint ---
+@mixin respond-to($bp) {
+  @if $bp == 'sm' {
+    @media (max-width: v.$bp-sm) { @content; }
+  } @else if $bp == 'md' {
+    @media (max-width: v.$bp-md) { @content; }
+  } @else if $bp == 'lg' {
+    @media (max-width: v.$bp-lg) { @content; }
+  } @else if $bp == 'xl' {
+    @media (max-width: v.$bp-xl) { @content; }
+  }
+}
+
+// --- Status Dot ---
+@mixin status-dot($color) {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $color;
+  display: inline-block;
+}
+
+// --- Avatar Base ---
+@mixin avatar-base($size: 32px) {
+  width: $size;
+  height: $size;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+// --- Top Accent Bar ---
+@mixin top-accent-bar($color) {
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: var(--rl) var(--rl) 0 0;
+    background: $color;
+  }
+}
+
+// --- Focus Ring ---
+@mixin focus-ring($color: var(--g2)) {
+  &:focus {
+    outline: none;
+    border-color: $color;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+  }
+}
+
+// --- Hover Lift ---
+@mixin hover-lift {
+  transition: v.$tr;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shm);
+  }
+}
+
+// --- Glass Effect ---
+@mixin glass($blur: 8px, $bg: rgba(255, 255, 255, 0.1)) {
+  background: $bg;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+}

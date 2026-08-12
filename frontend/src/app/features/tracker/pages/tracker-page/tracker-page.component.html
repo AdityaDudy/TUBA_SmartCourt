@@ -1,0 +1,155 @@
+<div class="page" id="tracker-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-radar"></i> Court Tracker</h1>
+      <p class="pg-sub">Real-time eCourts case lookup · CNR and Case Number search</p>
+    </div>
+  </div>
+
+  <!-- ── Search Card ─────────────────────────────────────────── -->
+  <div class="card tracking-search-box">
+    <div class="form-grid">
+      <div class="fg">
+        <label for="search-type-select">Search Type</label>
+        <select id="search-type-select" [value]="searchType()"
+          (change)="onSearchTypeChange($any($event.target).value)">
+          @for (st of searchTypes; track st) {
+            <option [value]="st">{{ st }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fg fg--wide">
+        <label for="case-number-input">
+          {{ searchType() === 'CNR Number' ? 'CNR Number *' : searchType() + ' *' }}
+        </label>
+        <div class="search-input-group">
+          <div class="input-wrap">
+            <input id="case-number-input" type="text"
+              [placeholder]="inputPlaceholder"
+              [value]="cnr()"
+              (input)="onCnrInput($any($event.target).value)"
+              (keyup.enter)="search()"
+              [class.input-error]="cnrFormatError !== null">
+            @if (searchType() === 'CNR Number' && cnr().length > 0 && !cnrFormatError) {
+              <span class="input-ok"><i class="fas fa-check-circle"></i></span>
+            }
+          </div>
+          <button class="btn-primary" [disabled]="loading() || !cnr().trim() || !!cnrFormatError"
+            (click)="search()">
+            @if (loading()) {
+              <i class="fas fa-circle-notch fa-spin"></i> Fetching...
+            } @else {
+              <i class="fas fa-magnifying-glass"></i> Search
+            }
+          </button>
+        </div>
+        @if (cnrFormatError) {
+          <p class="field-error"><i class="fas fa-triangle-exclamation"></i> {{ cnrFormatError }}</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Recent Searches Chips ──────────────────────────────── -->
+  @if (recentSearches().length > 0 && !loading() && !showPicker()) {
+    <div class="recent-searches">
+      <span class="recent-label"><i class="fas fa-clock-rotate-left"></i> Recent</span>
+      <div class="chips-row">
+
+        <!-- CNR recent chips (from backend history) -->
+        @for (s of recentSearches(); track s.jobId) {
+          <button class="chip" [class.chip--done]="s.status === 'DONE'"
+            [class.chip--failed]="s.status === 'FAILED'"
+            (click)="runRecentSearch(s)"
+            [title]="s.caseTitle || s.cnr">
+            <span class="chip-cnr">{{ s.cnr }}</span>
+            @if (s.caseTitle) {
+              <span class="chip-title">{{ s.caseTitle | slice:0:30 }}</span>
+            }
+          </button>
+        }
+
+        <!-- Case Number recent chips (from localStorage) -->
+        @for (e of recentCaseSearches(); track e.searchedAt) {
+          <button class="chip chip--case-no"
+            (click)="runRecentCaseSearch(e)"
+            [title]="e.value">
+            <span class="chip-cnr">{{ e.value }}</span>
+            <span class="chip-title chip-badge">
+              <i class="fas fa-hashtag"></i> Case No.
+            </span>
+          </button>
+        }
+
+      </div>
+    </div>
+  }
+
+  <!-- ── Error State ─────────────────────────────────────────── -->
+  @if (error()) {
+    <div class="status-card status-card--error">
+      <div class="sc-icon"><i class="fas fa-circle-xmark"></i></div>
+      <div class="sc-body">
+        <h3>Search Failed</h3>
+        <p>{{ error() }}</p>
+        <button class="btn-outline" (click)="search()">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Async Loading State ────────────────────────────────── -->
+  @if (loading() && jobStatus()) {
+    <div class="status-card status-card--loading">
+      <div class="sc-icon sc-icon--pulse">
+        <i class="fas fa-satellite-dish"></i>
+      </div>
+      <div class="sc-body">
+        <h3>Connecting to eCourts</h3>
+        @if (jobStatus()?.status === 'PENDING') {
+          <p>Your request is queued — fetching from court servers...</p>
+        } @else if (jobStatus()?.status === 'RUNNING') {
+          <p>Scraping case data — this may take 5–15 seconds...</p>
+        }
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── Case Number Candidate Picker ──────────────────────── -->
+  @if (showPicker() && searchResults().length > 0) {
+    <div class="picker-section">
+      <div class="picker-header">
+        <i class="fas fa-list-check"></i>
+        <span>{{ searchResults().length }} case{{ searchResults().length !== 1 ? 's' : '' }} found — select one to view full details</span>
+        <button class="picker-close" (click)="closePicker()">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+      <div class="candidates-list">
+        @for (r of searchResults(); track r.cnr) {
+          <button class="candidate-card" (click)="selectResult(r)" id="candidate-{{ r.cnr }}">
+            <div class="cc-type-badge">{{ r.caseType || '—' }}</div>
+            <div class="cc-body">
+              <div class="cc-parties">
+                <span class="cc-pet">{{ r.petitioners?.[0] || 'Unknown' }}</span>
+                <span class="cc-vs">vs</span>
+                <span class="cc-resp">{{ r.respondents?.[0] || 'Unknown' }}</span>
+              </div>
+              <div class="cc-meta">
+                @if (r.courtName) { <span><i class="fas fa-building-columns"></i> {{ r.courtName }}</span> }
+                @if (r.filingDate) { <span><i class="fas fa-calendar"></i> Filed {{ r.filingDate }}</span> }
+                <span class="cc-cnr"><i class="fas fa-fingerprint"></i> {{ r.cnr }}</span>
+              </div>
+            </div>
+            <div class="cc-arrow"><i class="fas fa-chevron-right"></i></div>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

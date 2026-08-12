@@ -1,0 +1,537 @@
+<div class="page" id="diary-page">
+
+  <!-- ── PAGE HEADER & SCOPE TOOLBAR ─────────────────────────── -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-calendar-days"></i> Advocate Diary</h1>
+      <p class="pg-sub">{{ monthLabel }}</p>
+    </div>
+    <div class="pg-actions">
+      <!-- Scope Segmented Controls (rendered if team or org scope allowed) -->
+      <div class="scope-toggles" *ngIf="scopeOptions()?.canTeam || scopeOptions()?.canOrg">
+        <button [class.active]="scope() === 'own'" (click)="setScope('own')">
+          <i class="fas fa-user"></i> My Diary
+        </button>
+        <button *ngIf="scopeOptions()?.canTeam" [class.active]="scope() === 'team'" (click)="setScope('team')">
+          <i class="fas fa-users"></i> My Team
+        </button>
+        <button *ngIf="scopeOptions()?.canOrg" [class.active]="scope() === 'org'" (click)="setScope('org')">
+          <i class="fas fa-building"></i> Whole Org
+        </button>
+      </div>
+
+      <!-- Month Navigation -->
+      <div class="month-nav">
+        <button class="btn-outline" (click)="prev()"><i class="fas fa-chevron-left"></i></button>
+        <span class="month-lbl">{{ monthLabel }}</span>
+        <button class="btn-outline" (click)="next()"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <!-- View Toggle -->
+      <!-- View Toggle -->
+      <div class="view-toggles">
+        <button [class.active]="viewMode() === 'calendar'" (click)="viewMode.set('calendar')">
+          <i class="fas fa-calendar"></i> Calendar
+        </button>
+        <button [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')">
+          <i class="fas fa-list-ul"></i> List
+        </button>
+      </div>
+      <button class="btn-primary" (click)="showForm.set(true)"><i class="fas fa-plus"></i> Add Event</button>
+    </div>
+  </div>
+
+  <!-- Member Picker Chips for Team / Org Scope -->
+  <div class="member-picker-row" *ngIf="(scope() === 'team' || scope() === 'org') && scopeOptions()">
+    <span class="picker-label"><i class="fas fa-filter"></i> Filter Member:</span>
+    <button class="member-chip" [class.active]="selectedMemberId() === null" (click)="selectMember(null)">
+      All {{ scope() === 'team' ? 'Team' : 'Org' }}
+    </button>
+    <button *ngFor="let m of (scope() === 'team' ? scopeOptions()!.teamMembers : scopeOptions()!.orgMembers)"
+            class="member-chip"
+            [class.active]="selectedMemberId() === m.id"
+            (click)="selectMember(m.id)">
+      <span class="avatar-dot" [style.background]="m.gradient">{{ m.initials }}</span>
+      {{ m.name }}
+    </button>
+  </div>
+
+  <!-- Viewing someone else's diary notice banner -->
+  <div class="viewing-banner" *ngIf="selectedMemberId() !== null">
+    <span><i class="fas fa-eye"></i> Viewing filtered member's diary</span>
+    <button class="btn-text" (click)="selectMember(null)"><i class="fas fa-times"></i> Clear Filter</button>
+  </div>
+
+  <div class="diary-body">
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!--  LEFT: CALENDAR GRID OR LIST VIEW                        -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="diary-main">
+
+      <!-- ── CALENDAR VIEW ────────────────────────────────────── -->
+      @if (viewMode() === 'calendar') {
+      <div class="card cal-card">
+        <!-- Day header row -->
+        <div class="cal-grid cal-head">
+          @for (d of ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; track d) {
+          <div class="cal-dh">{{ d }}</div>
+          }
+        </div>
+        <!-- Calendar cells -->
+        @for (week of calendarWeeks(); track $index) {
+        <div class="cal-grid cal-week">
+          @for (day of week; track $index) {
+          <div class="cal-cell" [class.today]="isToday(day)" [class.selected]="selectedDay() === getDateStr(day)"
+            [class.has-events]="eventsOnDay(day).length > 0" (click)="selectDay(day)">
+            @if (day) {
+            <span class="cal-day-num">{{ day }}</span>
+            <!-- Event dots -->
+            <div class="cal-dots">
+              @for (e of eventsOnDay(day).slice(0, 3); track e.id) {
+              <span class="cal-dot" [class]="typeDotClass(e.type)" [class.conflict-dot]="isConflict(e)"></span>
+              }
+              @if (eventsOnDay(day).length > 3) {
+              <span class="cal-more">+{{ eventsOnDay(day).length - 3 }}</span>
+              }
+            </div>
+            <!-- Quick Add -->
+            <button class="cal-add-btn" (click)="openAddForDay(day); $event.stopPropagation()">
+              <i class="fas fa-plus"></i>
+            </button>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- Selected day pop-up modal window -->
+      @if (selectedDay()) {
+      <div class="modal-overlay" (click)="selectedDay.set(null)">
+        <div class="modal day-detail-modal" style="max-width: 580px; width: 90%; max-height: 85vh;" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3><i class="fas fa-calendar-day"></i> Events on {{ selectedDay() }}</h3>
+            <button class="modal-close" (click)="selectedDay.set(null)"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding: 1rem;">
+            @if (selectedDayEvents().length === 0) {
+              <div class="empty-state">
+                <i class="fas fa-calendar-check"></i>
+                <p>No events scheduled for this day.</p>
+              </div>
+            } @else {
+              @for (e of selectedDayEvents(); track e.id) {
+                <app-diary-event-card
+                  [event]="e"
+                  [showOwner]="scope() !== 'own'"
+                  [isConflict]="isConflict(e)"
+                  (onViewDetail)="openDetail($event)"
+                  (onEdit)="openEdit(e.original, $event)"
+                  (onDelete)="deleteEvent(e.original, $event)">
+                </app-diary-event-card>
+              }
+            }
+          </div>
+          <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">
+              Total: {{ selectedDayEvents().length }} event(s)
+            </span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-outline" (click)="selectedDay.set(null)">Close</button>
+              <button class="btn-primary" (click)="openAddForDay(null); showForm.set(true)">
+                <i class="fas fa-plus"></i> Add Event
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      }
+      }
+
+      <!-- ── LIST VIEW ──────────────────────────────────────────── -->
+      @if (viewMode() === 'list') {
+      <div class="card list-view-card" style="padding: 1.25rem;">
+        <div class="list-view-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--bdr); padding-bottom: 0.75rem;">
+          <h3 style="font-size: 1rem; font-weight: 800; color: var(--txt); display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="fas fa-list-check" style="color: var(--g1);"></i> Schedule in {{ monthLabel }}
+          </h3>
+          <span class="badge b-g">{{ thisMonthEvents().length }} Events</span>
+        </div>
+
+        @if (groupedMonthEvents().length === 0) {
+          <div class="empty-state" style="padding: 3rem 1rem; text-align: center;">
+            <i class="fas fa-calendar-xmark" style="font-size: 2.5rem; color: var(--txt3); margin-bottom: 0.75rem;"></i>
+            <p style="color: var(--txt2); font-weight: 600; font-size: 0.95rem;">No events scheduled for {{ monthLabel }}.</p>
+          </div>
+        } @else {
+          <div class="list-groups-container" style="display: flex; flex-direction: column; gap: 20px;">
+            @for (group of groupedMonthEvents(); track group.date) {
+              <div class="date-group-section">
+                <!-- Date Section Header Banner -->
+                <div class="date-group-header" [class.is-today-header]="group.isToday" [class.is-past-header]="group.isPast">
+                  <div class="date-header-title">
+                    <i class="far fa-calendar-alt"></i>
+                    <span>{{ group.formattedDate }}</span>
+                    @if (group.isToday) {
+                      <span class="badge b-g today-badge"><i class="fas fa-sun"></i> Today / Upcoming</span>
+                    } @else if (group.isPast) {
+                      <span class="badge b-t past-badge">Past Date</span>
+                    }
+                  </div>
+                  <span class="group-count-pill">{{ group.events.length }} {{ group.events.length === 1 ? 'event' : 'events' }}</span>
+                </div>
+
+                <!-- Event Cards in Date Group -->
+                <div class="date-group-cards" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                  @for (e of group.events; track e.id) {
+                    <app-diary-event-card
+                      [event]="e"
+                      [showOwner]="scope() !== 'own'"
+                      [isConflict]="isConflict(e)"
+                      (onViewDetail)="openDetail($event)"
+                      (onEdit)="openEdit(e.original, $event)"
+                      (onDelete)="deleteEvent(e.original, $event)">
+                    </app-diary-event-card>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+      }
+      </div>
+
+      <!-- ──════════════════════════════════════════════════════════ -->
+      <!--  RIGHT PANEL: TODAY + FULL EVENT LIST                    -->
+      <!-- ──════════════════════════════════════════════════════════ -->
+      <div class="diary-sidebar">
+
+        <!-- Today's Events -->
+        <div class="card" style="padding: 0; overflow: hidden;">
+          <div class="sidebar-header">
+            <i class="fas fa-sun"></i> Today
+            <span class="sidebar-count">{{ todayEvents().length }}</span>
+          </div>
+          @if (todayEvents().length === 0) {
+          <div class="empty-state-mini"><i class="fas fa-calendar-check"></i> Clear day</div>
+          } @else {
+          <div style="padding: 0.5rem;">
+            @for (e of todayEvents(); track e.id) {
+              <app-diary-event-card
+                [event]="e"
+                [showOwner]="scope() !== 'own'"
+                [isConflict]="isConflict(e)"
+                (onViewDetail)="openDetail($event)"
+                (onEdit)="openEdit(e.original, $event)"
+                (onDelete)="deleteEvent(e.original, $event)">
+              </app-diary-event-card>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- All Events This Month -->
+        <div class="card" style="padding: 0; overflow: hidden; flex: 1;">
+          <div class="sidebar-header">
+            <i class="fas fa-calendar-alt"></i> This Month
+            <span class="sidebar-count">{{ thisMonthEvents().length }}</span>
+          </div>
+          <div style="overflow-y: auto; max-height: 48vh; padding: 0.5rem;">
+            @for (e of thisMonthEvents(); track e.id) {
+              <app-diary-event-card
+                [event]="e"
+                [showOwner]="scope() !== 'own'"
+                [isConflict]="isConflict(e)"
+                (onViewDetail)="openDetail($event)"
+                (onEdit)="openEdit(e.original, $event)"
+                (onDelete)="deleteEvent(e.original, $event)">
+              </app-diary-event-card>
+            } @empty {
+            <div class="empty-state"><i class="fas fa-calendar-xmark"></i>
+              <p>No events this month.</p>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!--  ADD EVENT MODAL                                             -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  @if (showForm()) {
+  <div class="modal-overlay" (click)="showForm.set(false)">
+    <div class="modal" style="max-width: 520px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-calendar-plus"></i> Add Diary Event</h3>
+        <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <!-- Type selector as buttons -->
+          <div class="fg fg-full">
+            <label>Event Type</label>
+            <div class="type-btn-group">
+              @for (t of TYPES; track t) {
+              <button [class.active]="form().type === t" (click)="form.update(f => ({...f, type: t}))">
+                <i [class]="typeIcon(t)"></i> {{ typeLabel(t) }}
+              </button>
+              }
+            </div>
+          </div>
+
+          <div class="fg fg-full">
+            <label>Title *</label>
+            <input type="text" [value]="form().title || ''" maxlength="200"
+              (input)="form.update(f => ({...f, title: $any($event.target).value}))"
+              [placeholder]="form().type === 'hearing' ? 'e.g. WP/1234/2025 — Final Hearing' : 'Event title…'">
+          </div>
+
+          <div class="fg">
+            <label>Date *</label>
+            <input type="date" [value]="$any(form()).date || ''"
+              (change)="form.update(f => ({...f, date: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label>Time</label>
+            <input type="time" [value]="form().time || ''"
+              (change)="form.update(f => ({...f, time: $any($event.target).value}))">
+          </div>
+
+          <!-- Hearing-specific fields -->
+          @if (form().type === 'hearing') {
+          <div class="fg">
+            <label>Court</label>
+            <input type="text" [value]="form().court || ''" maxlength="100"
+              (input)="form.update(f => ({...f, court: $any($event.target).value}))"
+              placeholder="e.g. Delhi High Court">
+          </div>
+          <div class="fg">
+            <label>Linked Matter</label>
+            <select
+              (change)="form.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+              <option value="">— None —</option>
+              @for (m of ds.matters(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+            </select>
+          </div>
+          }
+
+          <!-- Meeting-specific fields -->
+          @if (form().type === 'meeting') {
+          <div class="fg">
+            <label>Linked Matter</label>
+            <select
+              (change)="form.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+              <option value="">— None —</option>
+              @for (m of ds.matters(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+            </select>
+          </div>
+          }
+
+          <div class="fg fg-full">
+            <label>Notes</label>
+            <textarea rows="2" maxlength="1000" [value]="form().notes || ''"
+              (input)="form.update(f => ({...f, notes: $any($event.target).value}))"></textarea>
+          </div>
+
+          <div class="fg fg-full">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" [checked]="form().urgent"
+                (change)="form.update(f => ({...f, urgent: $any($event.target).checked}))">
+              Mark as Urgent
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="save()"><i class="fas fa-save"></i> Save Event</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!--  EDIT EVENT MODAL                                            -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  @if (showEditForm()) {
+  <div class="modal-overlay" (click)="showEditForm.set(false)">
+    <div class="modal" style="max-width: 520px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-edit"></i> Edit Diary Event</h3>
+        <button class="modal-close" (click)="showEditForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="fg fg-full">
+            <label>Type</label>
+            <div class="type-btn-group">
+              @for (t of TYPES; track t) {
+              <button [class.active]="editForm().type === t" (click)="editForm.update(f => ({...f, type: t}))">
+                <i [class]="typeIcon(t)"></i> {{ typeLabel(t) }}
+              </button>
+              }
+            </div>
+          </div>
+          <div class="fg fg-full">
+            <label>Title *</label>
+            <input type="text" [value]="editForm().title || ''"
+              (input)="editForm.update(f => ({...f, title: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label>Date</label>
+            <input type="date" [value]="editForm().date || $any(editForm()).eventDate || ''"
+              (change)="editForm.update(f => ({...f, date: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label>Time</label>
+            <input type="time" [value]="editForm().time || $any(editForm()).eventTime || ''"
+              (change)="editForm.update(f => ({...f, time: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label>Court</label>
+            <input type="text" [value]="editForm().court || ''"
+              (input)="editForm.update(f => ({...f, court: $any($event.target).value}))">
+          </div>
+          <div class="fg">
+            <label>Linked Matter</label>
+            <select
+              (change)="editForm.update(f => ({...f, matterId: $any($event.target).value, matterTitle: $any($event.target).options[$any($event.target).selectedIndex].text}))">
+              <option value="">— None —</option>
+              @for (m of ds.matters(); track m.id) {
+              <option [value]="m.id" [selected]="('' + m.id) === ('' + editForm().matterId)">{{ m.title }}</option>
+              }
+            </select>
+          </div>
+          <div class="fg fg-full">
+            <label>Notes</label>
+            <textarea rows="2" [value]="editForm().notes || ''"
+              (input)="editForm.update(f => ({...f, notes: $any($event.target).value}))"></textarea>
+          </div>
+          <div class="fg fg-full">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" [checked]="editForm().urgent"
+                (change)="editForm.update(f => ({...f, urgent: $any($event.target).checked}))">
+              Mark as Urgent
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showEditForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="saveEdit()"><i class="fas fa-save"></i> Update Event</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!--  FULL EVENT DETAILS MODAL                                    -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  @if (selectedDetailEvent(); as evt) {
+  <div class="modal-overlay" style="z-index: 1100;" (click)="closeDetail()">
+    <div class="modal" style="max-width: 560px; width: 90%; border-radius: 14px;" (click)="$event.stopPropagation()">
+      <div class="modal-header" style="border-bottom: 1px solid var(--bdr); padding: 14px 20px; background: var(--card-bg);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="type-icon" [ngClass]="typeBadgeClass(evt.type)" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+            <i [class]="typeIcon(evt.type)"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--txt); margin: 0; line-height: 1.3;">{{ evt.title }}</h3>
+            <span class="badge" [ngClass]="typeBadgeClass(evt.type)" style="margin-top: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;">
+              {{ typeLabel(evt.type) }}
+            </span>
+          </div>
+        </div>
+        <button class="modal-close" style="position: static;" (click)="closeDetail()"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+
+        <!-- Grid of Organized Event Metadata -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: var(--bgs); padding: 14px; border-radius: 10px; border: 1px solid var(--bdr);">
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--txt3); text-transform: uppercase; display: block; margin-bottom: 2px;">
+              <i class="far fa-calendar-alt"></i> Date &amp; Time
+            </span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--txt);">
+              {{ evt.date || '—' }} at {{ evt.time || '09:00' }}
+            </span>
+          </div>
+
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--txt3); text-transform: uppercase; display: block; margin-bottom: 2px;">
+              <i class="fas fa-user-tie"></i> Assigned Advocate
+            </span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--txt);">
+              {{ evt.ownerName || 'Adv. Amit Sharma' }}
+            </span>
+          </div>
+
+          <div *ngIf="evt.court">
+            <span style="font-size: 11px; font-weight: 700; color: var(--txt3); text-transform: uppercase; display: block; margin-bottom: 2px;">
+              <i class="fas fa-landmark"></i> Court / Bench
+            </span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--txt);">
+              {{ evt.court }}
+            </span>
+          </div>
+
+          <div *ngIf="evt.clientName">
+            <span style="font-size: 11px; font-weight: 700; color: var(--txt3); text-transform: uppercase; display: block; margin-bottom: 2px;">
+              <i class="fas fa-building"></i> Client
+            </span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--txt);">
+              {{ evt.clientName }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Linked Matter Box -->
+        <div *ngIf="evt.matterTitle" style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; display: block;">
+              <i class="fas fa-briefcase"></i> Linked Matter
+            </span>
+            <span style="font-size: 13.5px; font-weight: 800; color: #1e40af; margin-top: 2px; display: block;">
+              {{ evt.matterTitle }}
+            </span>
+          </div>
+          <a *ngIf="evt.matterId" [routerLink]="['/app/matters', evt.matterId]" class="btn-xs btn-primary" (click)="closeDetail()" style="text-decoration: none; font-size: 11px; padding: 6px 12px;">
+            View Matter <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+
+        <!-- Notes / Remarks Box -->
+        <div *ngIf="evt.notes" style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--txt3); text-transform: uppercase;">
+            <i class="fas fa-sticky-note"></i> Remarks &amp; Notes
+          </span>
+          <div style="font-size: 13px; color: var(--txt2); line-height: 1.6; white-space: pre-wrap; background: var(--input-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr);">
+            {{ evt.notes }}
+          </div>
+        </div>
+
+        <!-- Urgency & Conflict Tags -->
+        <div *ngIf="evt.urgent || isConflict(evt)" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span *ngIf="evt.urgent" class="badge" style="background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px;">
+            <i class="fas fa-exclamation-circle"></i> High Priority / Urgent
+          </span>
+          <span *ngIf="isConflict(evt)" class="badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px;">
+            <i class="fas fa-exclamation-triangle"></i> Time Slot Conflict Detected
+          </span>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn-outline" (click)="closeDetail()">Close</button>
+        <div style="display: flex; gap: 8px;" *ngIf="evt.isLocal !== false">
+          <button class="btn-outline" (click)="openEdit(evt.original); closeDetail()"><i class="fas fa-edit"></i> Edit Event</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }

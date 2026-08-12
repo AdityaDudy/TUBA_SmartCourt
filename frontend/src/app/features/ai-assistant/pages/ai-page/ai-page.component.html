@@ -1,0 +1,67 @@
+<div class="page" id="ai-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-robot"></i> AI Legal Assistant</h1>
+      <p class="pg-sub">Generate drafts, summarize pleadings, research citations</p>
+    </div>
+  </div>
+
+  <div class="card ai-chat-container">
+    <!-- Left Sidebar for Past Conversations -->
+    <div class="chat-sidebar">
+      <button class="btn-new-chat" (click)="startNewChat()">
+        <i class="fas fa-plus"></i> New Chat
+      </button>
+      <div class="sidebar-title">PAST CHATS (MAX 10)</div>
+      <div class="conversations-list">
+        @for (c of conversations(); track c.id) {
+          <div class="conv-item" [class.active]="c.id === activeChatId()" (click)="selectConversation(c.id)">
+            <i class="far fa-comments"></i>
+            <span class="conv-title">{{ c.title }}</span>
+            <button class="conv-delete" title="Delete chat" (click)="deleteConversation(c.id, $event)">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        } @empty {
+          <div class="sidebar-empty">No past conversations.</div>
+        }
+      </div>
+    </div>
+
+    <!-- Main Chat Window -->
+    <div class="chat-main">
+      <div class="chat-history" #scrollContainer style="scroll-behavior: smooth;">
+        @for (m of messages(); track $index) {
+          <div class="chat-bubble-wrap" [class.chat-user]="m.sender === 'user'">
+            <div class="chat-avatar">
+              @if (m.sender === 'user') {
+                <i class="fas fa-user-tie"></i>
+              } @else {
+                <i class="fas fa-scale-balanced"></i>
+              }
+            </div>
+            <div class="chat-bubble">
+              <div [innerHTML]="formatMarkdown(m.text)"></div>
+            </div>
+          </div>
+        }
+        @if (loading()) {
+          <div class="chat-bubble-wrap">
+            <div class="chat-avatar"><i class="fas fa-scale-balanced"></i></div>
+            <div class="chat-bubble typing-indicator">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="chat-input-bar">
+        <input type="text" placeholder="Ask AI to draft a plaint, legal notice, etc..." 
+               [value]="prompt()" (input)="prompt.set($any($event.target).value)" (keyup.enter)="sendMessage()">
+        <button class="btn-primary" [disabled]="loading() || !prompt().trim()" (click)="sendMessage()">
+          <i class="fas fa-paper-plane"></i> Send
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

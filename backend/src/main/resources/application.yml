@@ -1,0 +1,134 @@
+spring:
+  application:
+    name: courtos-backend
+
+  # ── Database Configuration (PostgreSQL 18/16 & pgvector) ─────────────────────
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/smartcourt}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:1234}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+
+  # ── JPA / Hibernate ──────────────────────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # ── Flyway Migrations ─────────────────────────────────────────
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    repair-on-migrate: true
+    validate-on-migrate: false
+    out-of-order: true
+    schemas: public
+
+  # ── Redis (Cache & Session Store) ────────────────────────────
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  session:
+    store-type: redis
+    timeout: 30m
+
+  # ── Mail Configuration ────────────────────────────────────────
+  mail:
+    host: ${SMTP_HOST:smtp.sendgrid.net}
+    port: 587
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  # ── Spring AI ──────────────────────────────────────────────
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:demo-key}
+      chat:
+        options:
+          model: gpt-4o
+
+  # ── File Upload Limits ───────────────────────────────────────
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 60MB
+
+# ── OpenRouter ─────────────────────────────────────────────────
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:google/gemini-2.5-flash}
+  url: ${OPENROUTER_URL:https://openrouter.ai/api/v1/chat/completions}
+
+# ── JWT / Security settings ────────────────────────────────────
+security:
+  jwt:
+    secret: ${JWT_SECRET:TubaSmartCourtSecretKey2026_ThisMustBeAtLeast256BitsForHS256Algo}
+    access-expiry-seconds: 900
+    refresh-expiry-seconds: 604800
+  mfa:
+    issuer: "TUBA Smart Court"
+  lockout:
+    max-attempts: 5
+    lockout-minutes: 15
+
+# ── Admin Seeding Configuration ────────────────────────────────
+admin:
+  seed:
+    email: ${ADMIN_SEED_EMAIL:admin@tubalaw.com}
+    password: ${ADMIN_SEED_PASSWORD:Admin@123}
+    name: ${ADMIN_SEED_NAME:Admin User}
+
+# ── Storage (S3 / MinIO) ──────────────────────────────────────
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    bucket-prefix: tuba-tenant-
+    region: ${S3_REGION:ap-south-1}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
+
+# ── Tracker / CNR Scraper ─────────────────────────────────────
+tracker:
+  provider:
+    type: ${TRACKER_PROVIDER_TYPE:ecourtsindia} # 'ecourtsindia' or 'scraper'
+    base-url: ${TRACKER_BASE_URL:https://webapi.ecourtsindia.com}
+    api-key: ${TRACKER_API_KEY:eci_live_tzcosr97dj7ewfgfd6mcb77nfxemf7r2}
+    api-url: ${TRACKER_API_URL:https://webapi.ecourtsindia.com}
+  cache:
+    ttl-hours: ${TRACKER_CACHE_TTL_HOURS:6}
+  storage:
+    local-path: ./data/tracker-orders
+  scrape:
+    worker-poll-ms: 20000
+    request-delay-ms: 2000
+    captcha-s3-prefix: tracker/captcha/
+
+# ── Server Port ───────────────────────────────────────────────
+server:
+  port: ${PORT:8084}
+  servlet:
+    context-path: /
+
+# ── Actuator / Healthcheck ────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

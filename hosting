@@ -1,0 +1,8 @@
+internal db = postgresql://tuba_4hwz_user:bSQt3bVObD7HhNb7AYVjkNKNYPoU0LwU@dpg-d9m3uq6417fc73duqnh0-a/tuba_4hwz
+Database = tuba_4hwz
+Username = tuba_4hwz_user
+Password = bSQt3bVObD7HhNb7AYVjkNKNYPoU0LwU
+
+redis - redis://red-d9m41uijnfac73bjr840:6379
+
+redis://red-d9m41uijnfac73bjr840:viNNOxAZhzhgyrkaydYYy642XBsKIPwR@red-d9m41uijnfac73bjr840:6379

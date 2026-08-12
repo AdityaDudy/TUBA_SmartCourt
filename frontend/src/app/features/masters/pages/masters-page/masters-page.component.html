@@ -1,0 +1,178 @@
+<div class="page" id="masters-page">
+  
+  <!-- Page Header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-sliders"></i> Masters</h1>
+      <p class="pg-sub">Manage global dropdown configurations and master lookup records</p>
+    </div>
+    <app-button variant="primary" icon="plus" (onClick)="showAddCategoryForm.set(true)">
+      New Master
+    </app-button>
+  </div>
+
+  <!-- Information Alert Banner -->
+  <div class="info-banner">
+    <i class="fas fa-info-circle"></i>
+    <span>Masters control all dropdown options across the platform. Add, edit or reorder values here and all forms update instantly.</span>
+  </div>
+
+  <!-- Master Cards Grid -->
+  <div class="masters-grid">
+    @for (card of allMasterCards(); track card.key) {
+      <div class="master-card" (click)="openManage(card)">
+        <div class="card-icon" [style.background]="card.bg" [style.color]="card.tc">
+          <i class="fas" [class]="card.icon"></i>
+        </div>
+        <div class="card-details" style="flex: 1;">
+          <div class="card-title-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="card-title">{{ card.title }}</div>
+            <button class="card-edit-btn" title="Edit Master Details" (click)="openEditCategory(card, $event)">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="card-count">{{ getValuesCount(card.key) }} values</div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Modal: Manage Category Values -->
+  @if (selectedCard(); as card) {
+    <div class="modal-overlay" (click)="selectedCard.set(null)">
+      <div class="modal manage-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas" [class]="card.icon"></i> Manage — {{ card.title }}</h3>
+          <button class="modal-close" (click)="selectedCard.set(null)"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="modal-body">
+          <!-- Add Value Bar -->
+          <div class="add-value-bar">
+            <input type="text" #newValInput placeholder="Enter new value..." maxlength="100" (input)="newVal.set(newValInput.value)" (keyup.enter)="addLocalItem(); newValInput.value = ''">
+            <app-button variant="primary" icon="plus" (onClick)="addLocalItem(); newValInput.value = ''">Add</app-button>
+          </div>
+
+          <!-- Items list -->
+          <div class="modal-items-list">
+            @for (item of modalItems(); track $index) {
+              <div class="modal-item-row">
+                <span class="item-index">{{ $index + 1 }}</span>
+                @if (editingItemIndex() === $index) {
+                  <input type="text" class="inline-edit-input" maxlength="100" [value]="editingItemValue()" (input)="editingItemValue.set($any($event.target).value)" (keyup.enter)="saveEditItem($index)" (keyup.escape)="cancelEditItem()" autofocus style="flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--bdr); background: var(--bg-body); color: var(--txt); font-size: 13px; outline: none; margin-right: 10px;">
+                  <div class="item-actions">
+                    <button class="btn-inline-save" title="Save" (click)="saveEditItem($index)" style="background: transparent; border: none; color: #10b981; cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn-inline-cancel" title="Cancel" (click)="cancelEditItem()" style="background: transparent; border: none; color: #ef4444; cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <span class="item-value">{{ item }}</span>
+                  <div class="item-actions">
+                    <button class="btn-arrow" title="Edit Item" (click)="startEditItem($index, item)">
+                      <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="btn-arrow" title="Move Up" (click)="moveUp($index)" [disabled]="$index === 0">
+                      <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="btn-arrow" title="Move Down" (click)="moveDown($index)" [disabled]="$index === modalItems().length - 1">
+                      <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button class="btn-delete" title="Delete" (click)="removeLocalItem($index)">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            } @empty {
+              <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <p>No values defined. Type above to add a value.</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <app-button variant="outline" (onClick)="selectedCard.set(null)">Close</app-button>
+          <app-button variant="primary" icon="save" (onClick)="save()">Save</app-button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Create Master Category -->
+  @if (showAddCategoryForm()) {
+    <div class="modal-overlay" (click)="showAddCategoryForm.set(false)">
+      <div class="modal card-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-folder-plus"></i> Create Master Category</h3>
+          <button class="modal-close" (click)="showAddCategoryForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Category Title</label>
+            <input type="text" placeholder="e.g. Languages" [value]="newCategoryTitle()" (input)="newCategoryTitle.set($any($event.target).value)" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--bdr); background: var(--bg-body); color: var(--txt); font-size: 13px; outline: none;">
+          </div>
+          <div class="form-row" style="display: flex; gap: 16px;">
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Icon Class (FontAwesome)</label>
+              <input type="text" placeholder="e.g. fa-language" [value]="newCategoryIcon()" (input)="newCategoryIcon.set($any($event.target).value)" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--bdr); background: var(--bg-body); color: var(--txt); font-size: 13px; outline: none;">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px; width: 100px;">
+              <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Bg Color</label>
+              <input type="color" [value]="newCategoryBg()" (input)="newCategoryBg.set($any($event.target).value)" style="width: 100%; height: 38px; border: 1px solid var(--bdr); border-radius: 8px; cursor: pointer; padding: 2px;">
+            </div>
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px; width: 100px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Text Color</label>
+            <input type="color" [value]="newCategoryTc()" (input)="newCategoryTc.set($any($event.target).value)" style="width: 100%; height: 38px; border: 1px solid var(--bdr); border-radius: 8px; cursor: pointer; padding: 2px;">
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 20px;">
+          <app-button variant="outline" (onClick)="showAddCategoryForm.set(false)">Cancel</app-button>
+          <app-button variant="primary" (onClick)="addCategory()">Create</app-button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Edit Master Category Details -->
+  @if (showEditCategoryForm()) {
+    <div class="modal-overlay" (click)="showEditCategoryForm.set(false)">
+      <div class="modal card-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-pen"></i> Edit Category Details</h3>
+          <button class="modal-close" (click)="showEditCategoryForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Category Title</label>
+            <input type="text" [value]="editCategoryTitle()" (input)="editCategoryTitle.set($any($event.target).value)" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--bdr); background: var(--bg-body); color: var(--txt); font-size: 13px; outline: none;">
+          </div>
+          <div class="form-row" style="display: flex; gap: 16px;">
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Icon Class (FontAwesome)</label>
+              <input type="text" [value]="editCategoryIcon()" (input)="editCategoryIcon.set($any($event.target).value)" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--bdr); background: var(--bg-body); color: var(--txt); font-size: 13px; outline: none;">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px; width: 100px;">
+              <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Bg Color</label>
+              <input type="color" [value]="editCategoryBg()" (input)="editCategoryBg.set($any($event.target).value)" style="width: 100%; height: 38px; border: 1px solid var(--bdr); border-radius: 8px; cursor: pointer; padding: 2px;">
+            </div>
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px; width: 100px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--txt);">Text Color</label>
+            <input type="color" [value]="editCategoryTc()" (input)="editCategoryTc.set($any($event.target).value)" style="width: 100%; height: 38px; border: 1px solid var(--bdr); border-radius: 8px; cursor: pointer; padding: 2px;">
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 20px;">
+          <app-button variant="outline" (onClick)="showEditCategoryForm.set(false)">Cancel</app-button>
+          <app-button variant="primary" (onClick)="saveCategoryEdit()">Save Changes</app-button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

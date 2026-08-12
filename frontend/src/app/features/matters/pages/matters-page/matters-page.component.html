@@ -1,0 +1,700 @@
+<div class="page" id="matters-page">
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-folder-open"></i> Matters</h1>
+      <p class="pg-sub">
+        {{ courtFilter() ? filteredMatters().length : total() }} matters {{ filter() !== 'All' ? '(' + filter() + ')' : '' }}
+        @if (courtFilter()) {
+          · <span class="badge b-g" style="font-size: 11px;">Filtered by: {{ courtFilter() }} <i class="fas fa-times clickable" style="margin-left: 4px;" (click)="clearCourtFilter()"></i></span>
+        }
+      </p>
+    </div>
+    <div class="pg-actions">
+      <app-search-input placeholder="Search matters…" [value]="search()" (valueChange)="onSearch($event)"></app-search-input>
+      @if (auth.hasPermission('create_matters')) {
+        <app-button variant="primary" icon="plus" (onClick)="openAddForm()">New Matter</app-button>
+      }
+    </div>
+  </div>
+
+  <app-filter-tabs [options]="filters()" [active]="filter()" (activeChange)="onFilterChange($event)"></app-filter-tabs>
+
+
+  <!-- Table -->
+  <div class="card">
+    @if (loading()) {
+      <div class="loading-row"><i class="fas fa-circle-notch fa-spin"></i> Loading matters…</div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Case No.</th><th>Title</th><th>Client</th><th>Court</th>
+            <th>Type</th><th>Priority</th><th>Status</th><th>Next Hearing</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of filteredMatters(); track m.id) {
+            <tr class="tr-hover" (click)="openViewModal(m)">
+              <td><span class="mono">{{ m.caseNo || m.caseNumber || '—' }}</span></td>
+              <td>
+                <div class="matter-title">{{ m.title }}</div>
+                <div class="matter-sub">{{ m.advocate }}</div>
+              </td>
+              <td>{{ m.clientName }}</td>
+              <td>{{ m.court }}</td>
+              <td>{{ m.type }}</td>
+              <td>
+                <span class="badge" [class]="m.priority === 'Urgent' ? 'b-r' : m.priority === 'High' ? 'b-a' : 'b-g'">{{ m.priority || 'Medium' }}</span>
+              </td>
+              <td>
+                <span class="badge" [class]="m.status === 'Active' ? 'b-g' : m.status === 'Closed' ? 'b-t' : 'b-o'">{{ m.status }}</span>
+              </td>
+              <td>{{ m.nextHearing || m.nextHearingDate || '—' }}</td>
+              <td>
+                @if (auth.hasPermission('delete_matters')) {
+                  <button class="btn-xs" style="background: #ef4444; border-color: #ef4444; color: white;" (click)="deleteMatter(m.id!); $event.stopPropagation()"><i class="fas fa-trash"></i> Delete</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9" class="empty-cell">No matters found.</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <app-paginator [page]="page()" [size]="courtFilter() ? 1000 : size" [total]="courtFilter() ? filteredMatters().length : total()" (change)="onPageChange($event)"></app-paginator>
+
+
+  <!-- Create Form Modal -->
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="showForm.set(false)">
+      <div class="modal" style="max-width: 650px; width: 90%;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-folder-plus"></i> Register New Matter</h3>
+          <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Matter Title *</label>
+              <input type="text" [value]="form().title || ''" (input)="form.update(f => ({...f, title: $any($event.target).value}))" placeholder="e.g. Sharma vs State of Delhi" maxlength="200" [class.input-error]="submitted() && !isTitleValid">
+              @if (submitted() && !isTitleValid) {
+                <span class="error-msg">Title is required (3-200 characters)</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Case Number</label>
+              <input type="text" [value]="form().caseNumber || ''" (input)="form.update(f => ({...f, caseNumber: $any($event.target).value}))" placeholder="W.P.(C) 1234/2026" maxlength="50" [class.input-error]="submitted() && !isCaseNoValid">
+              @if (submitted() && !isCaseNoValid) {
+                <span class="error-msg">Case number must be under 50 characters</span>
+              }
+            </div>
+            <div class="fg">
+              <label>CNR Number</label>
+              <input type="text" [value]="form().cnrNumber || ''" (input)="form.update(f => ({...f, cnrNumber: $any($event.target).value}))" placeholder="e.g. DLHC010012342026" maxlength="50" [class.input-error]="submitted() && !isCnrNoValid">
+              @if (submitted() && !isCnrNoValid) {
+                <span class="error-msg">CNR number must be under 50 characters</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Client *</label>
+              <select [value]="form().clientId || ''" (change)="onClientChange($any($event.target).value, false)" [class.input-error]="submitted() && !isClientValid">
+                <option value="" disabled>-- Select Client --</option>
+                @for (c of ds.clients(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+              @if (submitted() && !isClientValid) {
+                <span class="error-msg">Please select a client</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Court *</label>
+              <select [value]="form().court || ''" (change)="form.update(f => ({...f, court: $any($event.target).value}))" [class.input-error]="submitted() && !isCourtValid">
+                <option value="" disabled>-- Select Court --</option>
+                @for (c of courts(); track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+              @if (submitted() && !isCourtValid) {
+                <span class="error-msg">Please select a court</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Matter Type *</label>
+              <select [value]="form().type || ''" (change)="form.update(f => ({...f, type: $any($event.target).value}))" [class.input-error]="submitted() && !isTypeValid">
+                <option value="" disabled>-- Select Type --</option>
+                @for (t of types(); track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+              @if (submitted() && !isTypeValid) {
+                <span class="error-msg">Please select a matter type</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Practice Area</label>
+              <select [value]="form().area || ''" (change)="form.update(f => ({...f, area: $any($event.target).value}))">
+                <option value="">-- Select Area --</option>
+                @for (pa of practiceAreas(); track pa) { <option [value]="pa">{{ pa }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Priority</label>
+              <select [value]="form().priority || 'Medium'" (change)="form.update(f => ({...f, priority: $any($event.target).value}))">
+                @for (p of prios(); track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Responsible Advocate *</label>
+              <select [value]="form().advocate || ''" (change)="form.update(f => ({...f, advocate: $any($event.target).value}))" [class.input-error]="submitted() && !isAdvocateValid">
+                <option value="" disabled>-- Select Advocate --</option>
+                @for (u of ds.users(); track u.id) {
+                  <option [value]="u.name">{{ u.name }}</option>
+                }
+              </select>
+              @if (submitted() && !isAdvocateValid) {
+                <span class="error-msg">Please select an advocate</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Opposite Party</label>
+              <input type="text" [value]="form().oppositeParty || ''" (input)="form.update(f => ({...f, oppositeParty: $any($event.target).value}))" placeholder="Respondent Name" maxlength="100" [class.input-error]="submitted() && !isOppositePartyValid">
+            </div>
+            <div class="fg">
+              <label>Matter Status</label>
+              <select [value]="form().status || 'Active'" (change)="form.update(f => ({...f, status: $any($event.target).value}))">
+                <option value="Active">Active</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Closed">Closed</option>
+                <option value="Disposed">Disposed</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Current Stage</label>
+              <select [value]="form().stage || 'Pre-filing'" (change)="form.update(f => ({...f, stage: $any($event.target).value}))">
+                <option value="Pre-filing">Pre-filing</option>
+                <option value="Filed">Filed</option>
+                <option value="Under Trial">Under Trial</option>
+                <option value="Reserved for Judgment">Reserved for Judgment</option>
+                <option value="Disposed">Disposed</option>
+                <option value="Appeal">Appeal</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Limitation / Deadline Date</label>
+              <input type="date" [value]="form().limitationDeadline || ''" (input)="form.update(f => ({...f, limitationDeadline: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>Next Hearing Date</label>
+              <input type="date" [value]="form().nextHearing || ''" (input)="form.update(f => ({...f, nextHearing: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>Co-Counsel Name</label>
+              <input type="text" [value]="form().coCounsel || ''" (input)="form.update(f => ({...f, coCounsel: $any($event.target).value}))" placeholder="e.g. Adv. Nitin Roy">
+            </div>
+            <div class="fg">
+              <label>Opposing Counsel Name</label>
+              <input type="text" [value]="form().opposingCounsel || ''" (input)="form.update(f => ({...f, opposingCounsel: $any($event.target).value}))" placeholder="Opponent Lead Counsel">
+            </div>
+            <div class="fg fg-full">
+              <label>Related Matter Link</label>
+              <select [value]="form().relatedMatterId || ''" (change)="form.update(f => ({...f, relatedMatterId: $any($event.target).value}))">
+                <option value="">-- None (Standalone Case) --</option>
+                @for (m of ds.matters(); track m.id) {
+                  <option [value]="m.id">{{ m.title }} [{{ m.caseNo || m.caseNumber || 'No Code' }}]</option>
+                }
+              </select>
+            </div>
+            <div class="fg fg-full">
+              <label>Background Notes</label>
+              <textarea [value]="form().bg || ''" (input)="form.update(f => ({...f, bg: $any($event.target).value}))" placeholder="Background details, key facts, risk assessment..." rows="3" maxlength="1000" [class.input-error]="submitted() && !isBgValid" style="width: 100%; border: 1px solid var(--bdr); border-radius: 8px; padding: 10px; font-family: inherit; font-size: 13.5px; background: var(--input-bg); color: var(--txt); resize: vertical;"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+          <button class="btn-primary" (click)="save()" [disabled]="submitted() && !isFormValid"><i class="fas fa-folder-plus"></i> Register Matter</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Form Modal -->
+  @if (showEditForm() && selectedMatter()) {
+    <div class="modal-overlay" (click)="showEditForm.set(false)">
+      <div class="modal" style="max-width: 650px; width: 90%;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-edit"></i> Edit Matter Details</h3>
+          <button class="modal-close" (click)="showEditForm.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Matter Title *</label>
+              <input type="text" [value]="editForm().title || ''" (input)="editForm.update(f => ({...f, title: $any($event.target).value}))" placeholder="e.g. Sharma vs State of Delhi" maxlength="200" [class.input-error]="editSubmitted() && !isEditTitleValid">
+              @if (editSubmitted() && !isEditTitleValid) {
+                <span class="error-msg">Title is required (3-200 characters)</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Case Number</label>
+              <input type="text" [value]="editForm().caseNumber || editForm().caseNo || ''" (input)="editForm.update(f => ({...f, caseNumber: $any($event.target).value, caseNo: $any($event.target).value}))" placeholder="W.P.(C) 1234/2026" maxlength="50" [class.input-error]="editSubmitted() && !isEditCaseNoValid">
+            </div>
+            <div class="fg">
+              <label>CNR Number</label>
+              <input type="text" [value]="editForm().cnrNumber || ''" (input)="editForm.update(f => ({...f, cnrNumber: $any($event.target).value}))" placeholder="e.g. DLHC010012342026" maxlength="50" [class.input-error]="editSubmitted() && !isEditCnrNoValid">
+              @if (editSubmitted() && !isEditCnrNoValid) {
+                <span class="error-msg">CNR number must be under 50 characters</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Client *</label>
+              <select [value]="editForm().clientId || ''" (change)="onClientChange($any($event.target).value, true)" [class.input-error]="editSubmitted() && !isEditClientValid">
+                <option value="" disabled>-- Select Client --</option>
+                @for (c of ds.clients(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+              @if (editSubmitted() && !isEditClientValid) {
+                <span class="error-msg">Please select a client</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Court *</label>
+              <select [value]="editForm().court || ''" (change)="editForm.update(f => ({...f, court: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditCourtValid">
+                <option value="" disabled>-- Select Court --</option>
+                @for (c of courts(); track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+              @if (editSubmitted() && !isEditCourtValid) {
+                <span class="error-msg">Please select a court</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Matter Type *</label>
+              <select [value]="editForm().type || ''" (change)="editForm.update(f => ({...f, type: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditTypeValid">
+                <option value="" disabled>-- Select Type --</option>
+                @for (t of types(); track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+              @if (editSubmitted() && !isEditTypeValid) {
+                <span class="error-msg">Please select a matter type</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Practice Area</label>
+              <select [value]="editForm().area || ''" (change)="editForm.update(f => ({...f, area: $any($event.target).value}))">
+                @for (pa of practiceAreas(); track pa) { <option [value]="pa">{{ pa }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Priority</label>
+              <select [value]="editForm().priority || 'Medium'" (change)="editForm.update(f => ({...f, priority: $any($event.target).value}))">
+                @for (p of prios(); track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div class="fg">
+              <label>Responsible Advocate *</label>
+              <select [value]="editForm().advocate || editForm().adv || ''" (change)="editForm.update(f => ({...f, advocate: $any($event.target).value, adv: $any($event.target).value}))" [class.input-error]="editSubmitted() && !isEditAdvocateValid">
+                <option value="" disabled>-- Select Advocate --</option>
+                @for (u of ds.users(); track u.id) {
+                  <option [value]="u.name">{{ u.name }}</option>
+                }
+              </select>
+              @if (editSubmitted() && !isEditAdvocateValid) {
+                <span class="error-msg">Please select an advocate</span>
+              }
+            </div>
+            <div class="fg">
+              <label>Opposite Party</label>
+              <input type="text" [value]="editForm().oppositeParty || ''" (input)="editForm.update(f => ({...f, oppositeParty: $any($event.target).value}))" placeholder="Respondent Name" maxlength="100">
+            </div>
+            <div class="fg">
+              <label>Status</label>
+              <select [value]="editForm().status || 'Active'" (change)="editForm.update(f => ({...f, status: $any($event.target).value}))">
+                <option value="Active">Active</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Closed">Closed</option>
+                <option value="Disposed">Disposed</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Current Stage</label>
+              <select [value]="editForm().stage || 'Pre-filing'" (change)="editForm.update(f => ({...f, stage: $any($event.target).value}))">
+                <option value="Pre-filing">Pre-filing</option>
+                <option value="Filed">Filed</option>
+                <option value="Under Trial">Under Trial</option>
+                <option value="Reserved for Judgment">Reserved for Judgment</option>
+                <option value="Disposed">Disposed</option>
+                <option value="Appeal">Appeal</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Limitation / Deadline Date</label>
+              <input type="date" [value]="editForm().limitationDeadline || ''" (input)="editForm.update(f => ({...f, limitationDeadline: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>Next Hearing Date</label>
+              <input type="date" [value]="editForm().nextHearing || ''" (input)="editForm.update(f => ({...f, nextHearing: $any($event.target).value}))">
+            </div>
+            <div class="fg">
+              <label>Co-Counsel Name</label>
+              <input type="text" [value]="editForm().coCounsel || ''" (input)="editForm.update(f => ({...f, coCounsel: $any($event.target).value}))" placeholder="Co-Counsel Lead">
+            </div>
+            <div class="fg">
+              <label>Opposing Counsel Name</label>
+              <input type="text" [value]="editForm().opposingCounsel || ''" (input)="editForm.update(f => ({...f, opposingCounsel: $any($event.target).value}))" placeholder="Opponent Lead Counsel">
+            </div>
+            <div class="fg fg-full">
+              <label>Related Matter Link</label>
+              <select [value]="editForm().relatedMatterId || ''" (change)="editForm.update(f => ({...f, relatedMatterId: $any($event.target).value}))">
+                <option value="">-- None --</option>
+                @for (m of ds.matters(); track m.id) {
+                  <option [value]="m.id">{{ m.title }} [{{ m.caseNo || m.caseNumber || 'No Code' }}]</option>
+                }
+              </select>
+            </div>
+            <div class="fg fg-full">
+              <label>Background Notes</label>
+              <textarea [value]="editForm().bg || ''" (input)="editForm.update(f => ({...f, bg: $any($event.target).value}))" placeholder="Background details..." rows="3" maxlength="1000" style="width: 100%; border: 1px solid var(--bdr); border-radius: 8px; padding: 10px; font-family: inherit; font-size: 13.5px; background: var(--input-bg); color: var(--txt); resize: vertical;"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showEditForm.set(false)">Cancel</button>
+          <button class="btn-primary" (click)="update()" [disabled]="editSubmitted() && !isEditFormValid"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: View Matter Details -->
+  @if (showViewModal() && selectedMatter(); as matter) {
+    <div class="modal-overlay" (click)="showViewModal.set(false)">
+      <div class="modal" style="max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--bdr);">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-folder-open" style="color: var(--g1);"></i> {{ matter.title }}
+            </h3>
+            <p style="font-size: 12px; color: var(--txt3); margin: 4px 0 0 0;">Case No: {{ matter.caseNumber || matter.caseNo || '—' }} | CNR: {{ matter.cnrNumber || '—' }}</p>
+          </div>
+          <button class="modal-close" (click)="showViewModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div style="display: flex; border-bottom: 1px solid var(--bdr); background: var(--bg2); padding: 0 16px;">
+          <button class="tab-btn" [class.active]="activeDetailTab() === 'summary'" (click)="activeDetailTab.set('summary')">
+            <i class="fas fa-info-circle" style="margin-right: 6px;"></i> Summary
+          </button>
+          <button class="tab-btn" [class.active]="activeDetailTab() === 'timeline'" (click)="activeDetailTab.set('timeline')">
+            <i class="fas fa-history" style="margin-right: 6px;"></i> Timeline
+          </button>
+          <button class="tab-btn" [class.active]="activeDetailTab() === 'documents'" (click)="activeDetailTab.set('documents')">
+            <i class="fas fa-file-alt" style="margin-right: 6px;"></i> Documents ({{ matterDocuments().length }})
+          </button>
+          <button class="tab-btn" [class.active]="activeDetailTab() === 'tasks'" (click)="activeDetailTab.set('tasks')">
+            <i class="fas fa-tasks" style="margin-right: 6px;"></i> Tasks ({{ matterTasks.length }})
+          </button>
+          <button class="tab-btn" [class.active]="activeDetailTab() === 'finance'" (click)="activeDetailTab.set('finance')">
+            <i class="fas fa-wallet" style="margin-right: 6px;"></i> Finance
+          </button>
+        </div>
+
+        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+          
+          <!-- Summary Tab -->
+          @if (activeDetailTab() === 'summary') {
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px; color: var(--txt3);">
+                <div><strong style="color: var(--txt);">Client:</strong> <span style="color: var(--txt2);">{{ matter.clientName }}</span></div>
+                <div><strong style="color: var(--txt);">Court:</strong> <span style="color: var(--txt2);">{{ matter.court }}</span></div>
+                <div><strong style="color: var(--txt);">Type:</strong> <span style="color: var(--txt2);">{{ matter.type }}</span></div>
+                <div><strong style="color: var(--txt);">Practice Area:</strong> <span style="color: var(--txt2);">{{ matter.area || '—' }}</span></div>
+                <div><strong style="color: var(--txt);">CNR Number:</strong> <span style="color: var(--txt2); font-family: monospace;">{{ matter.cnrNumber || '—' }}</span></div>
+                <div><strong style="color: var(--txt);">Advocate:</strong> <span style="color: var(--txt2);">{{ matter.advocate || matter.adv }}</span></div>
+                <div><strong style="color: var(--txt);">Priority:</strong> <span class="badge" [class]="matter.priority === 'Urgent' ? 'b-r' : matter.priority === 'High' ? 'b-a' : 'b-g'">{{ matter.priority || 'Medium' }}</span></div>
+                <div><strong style="color: var(--txt);">Status:</strong> <span class="badge" [class]="matter.status === 'Active' ? 'b-g' : matter.status === 'Closed' ? 'b-t' : 'b-o'">{{ matter.status }}</span></div>
+                <div><strong style="color: var(--txt);">Opposite Party:</strong> <span style="color: var(--txt2);">{{ matter.oppositeParty || '—' }}</span></div>
+                <div><strong style="color: var(--txt);">Stage:</strong> <span class="badge b-b">{{ matter.stage || 'Pre-filing' }}</span></div>
+                <div><strong style="color: var(--txt);">Limitation Deadline:</strong> <span class="badge b-r" style="font-family: monospace;">{{ matter.limitationDeadline || '—' }}</span></div>
+                <div><strong style="color: var(--txt);">Co-Counsel:</strong> <span style="color: var(--txt2);">{{ matter.coCounsel || '—' }}</span></div>
+                <div><strong style="color: var(--txt);">Opposing Counsel:</strong> <span style="color: var(--txt2);">{{ matter.opposingCounsel || '—' }}</span></div>
+                
+                @if (getRelatedMatter(matter.relatedMatterId); as rel) {
+                  <div style="grid-column: span 2;">
+                    <strong style="color: var(--txt);">Connected Matter:</strong>
+                    <span style="color: var(--g1); font-weight: 700; cursor: pointer; text-decoration: underline;" (click)="openViewModal(rel)">
+                      {{ rel.title }} ({{ rel.caseNumber || rel.caseNo || 'No Case No' }})
+                    </span>
+                  </div>
+                }
+              </div>
+
+              <div style="border-top: 1px solid var(--bdr); padding-top: 12px;">
+                <h4 style="font-size: 12.5px; font-weight: 800; color: var(--txt); margin: 0 0 6px 0; text-transform: uppercase;">Background Notes</h4>
+                <p style="font-size: 13px; line-height: 1.5; color: var(--txt2); margin: 0; background: var(--hover); padding: 12px; border-radius: 8px; border: 1.5px solid var(--bdr);">
+                  {{ matter.bg || 'No background notes registered for this matter.' }}
+                </p>
+              </div>
+
+              <!-- Quick action triggers -->
+              <div style="display: flex; gap: 10px; border-top: 1px solid var(--bdr); padding-top: 14px; margin-top: 4px;">
+                <button class="btn-primary btn-sm" (click)="showAddTaskForm.set(true); activeDetailTab.set('tasks')">
+                  <i class="fas fa-plus"></i> Add Task
+                </button>
+                <button class="btn-outline btn-sm" (click)="showUploadModal.set(true); activeDetailTab.set('documents')">
+                  <i class="fas fa-upload"></i> Upload Doc
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Timeline Tab -->
+          @if (activeDetailTab() === 'timeline') {
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 4px 8px;">
+              @for (evt of matterTimelineEvents; track evt.title) {
+                <div style="display: flex; gap: 12px; border-left: 2.5px solid var(--g2); padding-left: 16px; position: relative; padding-bottom: 4px;">
+                  <div style="position: absolute; left: -6.5px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--g1); box-shadow: 0 0 0 3px var(--g-soft);"></div>
+                  <div>
+                    <span style="font-size: 11px; font-weight: 700; color: var(--txt3);">{{ evt.date || 'Pending Date' }}</span>
+                    <h5 style="font-size: 13px; font-weight: 800; color: var(--txt); margin: 2px 0 4px 0;">{{ evt.title }}</h5>
+                    <p style="font-size: 12px; color: var(--txt3); margin: 0;">{{ evt.desc }}</p>
+                  </div>
+                </div>
+              } @empty {
+                <div style="text-align: center; color: var(--txt3); padding: 32px;"><i class="fas fa-history" style="font-size: 24px; margin-bottom: 8px; display: block;"></i> No timeline events recorded yet.</div>
+              }
+            </div>
+          }
+
+          <!-- Documents Tab -->
+          @if (activeDetailTab() === 'documents') {
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Actions -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12.5px; font-weight: 800; color: var(--txt2);">Matter Folder files</span>
+                <button class="btn-xs btn-primary" (click)="showUploadModal.set(true)"><i class="fas fa-upload"></i> Upload new file</button>
+              </div>
+
+              @for (doc of matterDocuments(); track doc.id) {
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1.5px solid var(--bdr); border-radius: 10px; background: var(--card); transition: all 0.1s; cursor: pointer;" (click)="openDocPreview(doc)">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas" [class]="doc.icon || 'fa-file-alt'" style="font-size: 18px; color: var(--g1);"></i>
+                    <div>
+                      <h5 style="font-size: 13px; font-weight: 700; color: var(--txt); margin: 0; text-decoration: underline;">{{ doc.name }}</h5>
+                      <span style="font-size: 11px; color: var(--txt3);">Uploaded: {{ doc.date }} | Source: {{ doc.source }}</span>
+                    </div>
+                  </div>
+                  <span class="badge b-g">{{ doc.type }}</span>
+                </div>
+              } @empty {
+                <div style="text-align: center; color: var(--txt3); padding: 32px;"><i class="fas fa-folder" style="font-size: 28px; margin-bottom: 8px; display: block; color: var(--bdr2);"></i> No direct documents uploaded to this folder yet.</div>
+              }
+            </div>
+          }
+
+          <!-- Tasks Tab -->
+          @if (activeDetailTab() === 'tasks') {
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Actions -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12.5px; font-weight: 800; color: var(--txt2);">Linked Tasks Checklist</span>
+                <button class="btn-xs btn-primary" (click)="showAddTaskForm.set(!showAddTaskForm())"><i class="fas fa-plus"></i> Quick Task</button>
+              </div>
+
+              <!-- Quick Add Inline Form -->
+              @if (showAddTaskForm()) {
+                <div style="border: 1.5px solid var(--g2); border-radius: 10px; padding: 12px; background: var(--g-soft); display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px;">
+                  <h5 style="font-size: 12px; font-weight: 800; color: var(--g1); margin: 0;"><i class="fas fa-plus-circle"></i> Create New Task</h5>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="fg" style="grid-column: span 2;">
+                      <label style="font-size: 9px;">Task Title *</label>
+                      <input type="text" [value]="taskForm().title" (input)="taskForm.update(t => ({...t, title: $any($event.target).value}))" placeholder="e.g. File counter affidavit copy" style="padding: 6px; font-size: 12px;">
+                    </div>
+                    <div class="fg">
+                      <label style="font-size: 9px;">Due Date *</label>
+                      <input type="date" [value]="taskForm().dueDate" (input)="taskForm.update(t => ({...t, dueDate: $any($event.target).value}))" style="padding: 6px; font-size: 12px;">
+                    </div>
+                    <div class="fg">
+                      <label style="font-size: 9px;">Priority</label>
+                      <select [value]="taskForm().priority" (change)="taskForm.update(t => ({...t, priority: $any($event.target).value}))" style="padding: 6px; font-size: 12px;">
+                        <option value="Urgent">Urgent</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                      </select>
+                    </div>
+                    <div class="fg" style="grid-column: span 2;">
+                      <label style="font-size: 9px;">Assignee</label>
+                      <select [value]="taskForm().assignedTo" (change)="taskForm.update(t => ({...t, assignedTo: $any($event.target).value}))" style="padding: 6px; font-size: 12px;">
+                        <option value="">-- Select Member --</option>
+                        @for (u of ds.users(); track u.id) {
+                          <option [value]="u.name">{{ u.name }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="fg" style="grid-column: span 2;">
+                      <label style="font-size: 9px;">Description / Notes</label>
+                      <textarea [value]="taskForm().description || ''" (input)="taskForm.update(t => ({...t, description: $any($event.target).value}))" placeholder="Specific notes..." rows="2" style="padding: 6px; font-size: 12px; width:100%; border: 1px solid var(--bdr); border-radius: 6px;"></textarea>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+                    <button class="btn-xs btn-outline" (click)="showAddTaskForm.set(false)">Cancel</button>
+                    <button class="btn-xs btn-primary" [disabled]="!isTaskFormValid" (click)="saveTask()">Save Task</button>
+                  </div>
+                </div>
+              }
+              @for (tsk of matterTasks; track tsk.id) {
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1.5px solid var(--bdr); border-radius: 10px; background: var(--card);">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas" [class.fa-check-circle]="tsk.done" [class.fa-circle]="!tsk.done" [style.color]="tsk.done ? 'var(--g1)' : 'var(--txt3)'" style="font-size: 16px; cursor: pointer;" (click)="ds.toggleTaskDone(tsk.id).subscribe()"></i>
+                    <div>
+                      <h5 style="font-size: 13px; font-weight: 700; color: var(--txt); margin: 0;" [style.text-decoration]="tsk.done ? 'line-through' : 'none'">{{ tsk.title }}</h5>
+                      <span style="font-size: 11px; color: var(--txt3);">Due Date: {{ tsk.dueDate }} | Assignee: {{ tsk.assignedTo }}</span>
+                    </div>
+                  </div>
+                  <span class="badge" [class]="tsk.priority === 'Urgent' ? 'b-r' : tsk.priority === 'High' ? 'b-a' : 'b-g'">{{ tsk.priority }}</span>
+                </div>
+              } @empty {
+                <div style="text-align: center; color: var(--txt3); padding: 32px;"><i class="fas fa-check-double" style="font-size: 28px; margin-bottom: 8px; display: block; color: var(--bdr2);"></i> No tasks linked to this matter.</div>
+              }
+            </div>
+          }
+
+          <!-- Finance Tab -->
+          @if (activeDetailTab() === 'finance' && matterFinanceRollup(); as rollup) {
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Mini Rollup Summary Cards -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">TOTAL BILLED</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--txt); margin-top: 4px;">{{ fmtPrecise(rollup.billed) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">RECEIVED</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--g1); margin-top: 4px;">{{ fmtPrecise(rollup.received) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">OUTSTANDING</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--red); margin-top: 4px;">{{ fmtPrecise(rollup.outstanding) }}</div>
+                </div>
+                <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); text-align: center;">
+                  <div style="font-size: 11px; color: var(--txt3); font-weight: 700;">EXPENSES</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--purple); margin-top: 4px;">{{ fmtPrecise(rollup.expenses) }}</div>
+                </div>
+              </div>
+
+              <!-- Linked Invoices List -->
+              <div>
+                <h5 style="font-size: 13px; font-weight: 800; color: var(--txt); margin: 12px 0 6px 0;">Linked Invoices</h5>
+                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+                  @for (inv of rollup.invoices; track inv.id) {
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid var(--bdr); border-radius: 8px; background: var(--card);">
+                      <div>
+                        <span style="font-family: monospace; font-weight: 700; font-size: 12px;">{{ inv.invoiceNo }}</span>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--txt3);">Due: {{ inv.dueDate }}</p>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-weight: 800; font-size: 12.5px;">{{ fmtPrecise(inv.amount) }}</span>
+                        <span class="badge" [class.b-g]="inv.status === 'Paid'" [class.b-r]="inv.status === 'Overdue'" [class.b-a]="inv.status === 'Unpaid'" [class.b-a-outline]="inv.status === 'Partially Paid'">
+                          {{ inv.status }}
+                        </span>
+                      </div>
+                    </div>
+                  } @empty {
+                    <p style="font-size: 11.5px; color: var(--txt3); font-style: italic; margin: 4px 0 0 0;">No invoices linked to this matter.</p>
+                  }
+                </div>
+              </div>
+
+              <!-- Linked Expenses List -->
+              <div>
+                <h5 style="font-size: 13px; font-weight: 800; color: var(--txt); margin: 12px 0 6px 0;">Logged Expenses</h5>
+                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+                  @for (exp of rollup.expensesList; track exp.id) {
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid var(--bdr); border-radius: 8px; background: var(--card);">
+                      <div>
+                        <span style="font-weight: 700; font-size: 12px;">{{ exp.category }}</span>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--txt3);">Date: {{ exp.date }}</p>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-weight: 800; font-size: 12.5px;">{{ fmtPrecise(exp.amount) }}</span>
+                        @if (exp.invoiced) {
+                          <span class="badge b-g">Invoiced</span>
+                        } @else if (exp.billable) {
+                          <span class="badge b-a">Billable</span>
+                        } @else {
+                          <span class="badge b-t">Internal</span>
+                        }
+                      </div>
+                    </div>
+                  } @empty {
+                    <p style="font-size: 11.5px; color: var(--txt3); font-style: italic; margin: 4px 0 0 0;">No expenses logged for this matter.</p>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--bdr);">
+          <button class="btn-outline" (click)="showViewModal.set(false)">Close</button>
+          @if (auth.hasPermission('edit_matters')) {
+            <button class="btn-primary" (click)="openEditModal(matter)"><i class="fas fa-edit"></i> Edit Matter</button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal Dialog: Direct Document Upload form inside detail tabs -->
+  @if (showUploadModal()) {
+    <div class="modal-overlay" style="z-index: 1100;" (click)="showUploadModal.set(false)">
+      <div class="modal" style="width: 480px; max-width: 95%;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3><i class="fas fa-file-upload"></i> Upload Matter Document</h3>
+          <button class="modal-close" (click)="showUploadModal.set(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Dropzone area mockup triggers local input -->
+          <div style="border: 2px dashed var(--bdr2); border-radius: 12px; padding: 24px; text-align: center; background: var(--bg); cursor: pointer;" (click)="matterFile.click()">
+            <i class="fas fa-cloud-upload-alt" style="font-size: 32px; color: var(--g1); margin-bottom: 8px; display: block;"></i>
+            <span style="font-size: 13px; font-weight: 700; color: var(--txt);">Click here to select a file</span>
+            <p style="font-size: 11.5px; color: var(--txt3); margin: 4px 0 0 0;">PDF, DOCX, XLSX, JPG up to 50MB</p>
+            <input type="file" #matterFile (change)="onMatterFileUpload($event)" style="display:none">
+          </div>
+
+          <div class="fg">
+            <label>Document Type *</label>
+            <select [value]="uploadForm().docType" (change)="uploadForm.update(f => ({...f, docType: $any($event.target).value}))">
+              @for (dt of ds.masters()?.docTypes || ['Petition', 'Affidavit', 'Vakalatnama', 'Written Submissions', 'Order', 'Notice', 'Correspondence', 'Other']; track dt) {
+                <option [value]="dt">{{ dt }}</option>
+              }
+            </select>
+          </div>
+          <div class="fg">
+            <label>Metadata Tags (comma separated)</label>
+            <input type="text" [value]="uploadForm().tags" (input)="uploadForm.update(f => ({...f, tags: $any($event.target).value}))" placeholder="e.g. final, verified, draft">
+          </div>
+
+          @if (uploadingDoc()) {
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--g1); font-weight: 700; justify-content: center;">
+              <i class="fas fa-spinner fa-spin"></i> Uploading and running OCR analysis...
+            </div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" (click)="showUploadModal.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Document Quick Preview (Shared details panel) -->
+  @if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+    <app-document-preview-modal
+      [doc]="previewDoc"
+      [details]="getPreviewDetails()"
+      (close)="showPreviewModal.set(false)"
+      (delete)="deleteDoc($event)">
+    </app-document-preview-modal>
+  }
+

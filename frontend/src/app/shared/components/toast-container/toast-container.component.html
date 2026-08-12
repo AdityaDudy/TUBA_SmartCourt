@@ -1,0 +1,11 @@
+<div class="toast-area">
+  @for (t of toast.toasts(); track t.id) {
+    <div class="toast" [class]="cssClass[t.type]">
+      <i class="fa-solid" [class]="t.icon"></i>
+      <span>{{ t.message }}</span>
+      <button class="toast-close" (click)="toast.dismiss(t.id)" aria-label="Dismiss">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+  }
+</div>

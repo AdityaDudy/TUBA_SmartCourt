@@ -1,0 +1,138 @@
+@if (doc) {
+  <div class="modal-overlay" style="z-index: 1200;" (click)="onClose()">
+    <div class="modal" style="width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 12px 20px; background: var(--bg2);">
+        <div>
+          <h3 style="font-size: 14.5px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i> {{ doc.name }}
+          </h3>
+          <span class="badge b-g" style="margin-top: 4px;">{{ doc.type || 'Court Document' }}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="btn-xs btn-outline" style="padding: 6px 12px; font-size: 11px;" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+          </button>
+          @if (details) {
+            <a [href]="details.rawUrl || '#'" [attr.download]="details.name" target="_blank" class="btn-xs btn-primary" style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" [style.opacity]="details.rawUrl ? '1' : '0.5'" [style.pointer-events]="details.rawUrl ? 'auto' : 'none'">
+              <i class="fas fa-download"></i> Download
+            </a>
+          }
+          @if (auth.hasPermission('delete_matters') && doc.id) {
+            <button class="btn-xs" style="padding: 6px 12px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;" (click)="onDelete()">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          }
+          <button class="modal-close" style="position: static; margin-left: 10px;" (click)="onClose()"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
+      <!-- PDF Reader Toolbar Simulation -->
+      <div style="background: #334155; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid #1e293b;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+          <span style="font-weight: 600;">Page 1 of 1</span>
+          <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-minus"></i></button>
+          <span style="font-family: monospace;">100%</span>
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i class="fas fa-search-plus"></i></button>
+          <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; margin-left: 10px;"><i class="fas fa-expand"></i></button>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+          Source: {{ doc.source || 'Secure Vault' }} | Verified
+        </div>
+      </div>
+
+      <div class="modal-body" style="flex: 1; overflow-y: auto; background: #475569; padding: 24px; display: flex; flex-direction: column; align-items: center; min-height: 480px; gap: 20px;">
+        @if (details) {
+          @if (details.isImage) {
+            @if (details.rawUrl) {
+              <img [src]="details.rawUrl" style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;" />
+            } @else {
+              <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                <i class="fas fa-image" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                <p style="margin: 0; font-weight: 700;">No preview available for this image.</p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+              </div>
+            }
+          } @else if (details.isPdf) {
+            @if (details.localUrl) {
+              <iframe [src]="details.localUrl" style="width: 100%; height: 75vh; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;"></iframe>
+            } @else {
+              <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+                <i class="fas fa-file-pdf" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+                <p style="margin: 0; font-weight: 700;">No preview available for this PDF.</p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+              </div>
+            }
+          } @else if (details.isTemplateInstance) {
+            <!-- Simulated A4 Legal Page with dynamic data -->
+            <div style="width: 100%; max-width: 620px; min-height: 800px; background: #ffffff; padding: 48px 56px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; flex-direction: column; font-family: 'Times New Roman', Times, serif; color: #1e293b; position: relative; border-radius: 4px; box-sizing: border-box; text-align: left;">
+              <div style="position: absolute; top: 40%; left: 15%; right: 15%; transform: rotate(-30deg); font-size: 48px; font-weight: 800; color: rgba(220, 38, 38, 0.06); text-transform: uppercase; text-align: center; border: 8px double rgba(220, 38, 38, 0.06); padding: 10px; pointer-events: none; font-family: sans-serif; letter-spacing: 2px;">
+                TUBA SmartCourt<br>Official Copy
+              </div>
+              <div style="text-align: center; border-bottom: 2px double #1e293b; padding-bottom: 12px; margin-bottom: 24px;">
+                <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">Before the Honorable Court of Jurisdiction</h2>
+                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">At New Delhi, India</span>
+              </div>
+              <div style="font-size: 12.5px; line-height: 1.6; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; border-radius: 6px;">
+                <div>
+                  <strong>PETITIONER / PLAINTIFF:</strong><br>
+                  <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.clientName }}</span><br>
+                  <span style="font-size: 10.5px; color: #64748b;">Represented by Lead Counsel</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 10px;">V / S</div>
+                <div>
+                  <strong>RESPONDENT / DEFENDANT:</strong><br>
+                  <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.matterTitle }}</span><br>
+                  <span style="font-size: 10.5px; color: #64748b;">Represented by Standing Counsel</span>
+                </div>
+              </div>
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h3 style="font-size: 13px; font-weight: 800; text-decoration: underline; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">
+                  SUBMISSIONS ON BEHALF OF THE PETITIONER: {{ details.name }}
+                </h3>
+              </div>
+              <div style="font-size: 13px; line-height: 1.8; flex: 1; text-align: justify; color: #334155;">
+                <p style="margin: 0 0 14px 0;"><strong>MOST RESPECTFULLY SHOWETH:</strong></p>
+                <p style="margin: 0 0 14px 0;">
+                  1. That the present submissions are being filed in support of the petition challenging the arbitrary guidelines and directives issued. The document, specifically identified as <strong>{{ details.name }}</strong>, contains direct reference to input tax logs and verification certificates.
+                </p>
+                <p style="margin: 0 0 14px 0;">
+                  2. That the file metadata records this as a <strong>{{ details.type || 'Affidavit / Submission' }}</strong> document, filed on date <strong>{{ details.date || '2026-07-14' }}</strong> and processed under standard digital encryption keys.
+                </p>
+                <p style="margin: 0 0 14px 0;">
+                  3. That the uploader signature certificate belongs to <strong>Adv. Amit Sharma</strong>, who confirms that the contents are scanned, OCR indexed, and validated against conflict records.
+                </p>
+                <p style="margin: 0 0 14px 0;">
+                  4. That the Petitioners pray this Honorable Court may be pleased to take the document on record and grant interim relief as requested in the application.
+                </p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; border-top: 1.5px solid #cbd5e1; padding-top: 16px;">
+                <div>
+                  <div style="border: 2.5px solid #dc2626; color: #dc2626; font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 6px 12px; border-radius: 6px; transform: rotate(-8deg); letter-spacing: 0.8px; font-family: sans-serif; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: rgba(220,38,38,0.02); text-align: center; line-height: 1.3;">
+                    COURT RECORDS<br>
+                    <span style="font-size: 8px; font-weight: 500;">DIGITALLY SECURED</span><br>
+                    <span style="font-size: 8.5px; font-weight: 700;">ID: {{ details.id || 'VAULT-991' }}</span>
+                  </div>
+                </div>
+                <div style="text-align: right; font-size: 12.5px; color: #0f172a; font-family: sans-serif; line-height: 1.5;">
+                  <span style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 15px; color: #475569; display: block; margin-bottom: 6px;">Amit Sharma</span>
+                  <strong>Advocate for Petitioner</strong><br>
+                  <span style="font-size: 10.5px; color: #64748b;">Bar Council No: D/1049/2018</span>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+              <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+              <p style="margin: 0; font-weight: 700;">No preview available for this document type.</p>
+              <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

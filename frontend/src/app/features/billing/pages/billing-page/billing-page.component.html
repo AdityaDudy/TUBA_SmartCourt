@@ -1,0 +1,810 @@
+<div class="page" id="billing-page">
+  <!-- ── PAGE HEADER ─────────────────────────────────────────── -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-receipt"></i> Billing &amp; Finance</h1>
+      <p class="pg-sub">
+        @if (activeTab() === 'invoices') {
+          {{ total() }} invoices listed
+        } @else {
+          {{ expenses().length }} expenses listed
+        }
+      </p>
+    </div>
+    <div class="pg-actions">
+      <app-search-input [placeholder]="activeTab() === 'invoices' ? 'Search invoices…' : 'Search expenses…'" [value]="search()" (valueChange)="onSearch($event)"></app-search-input>
+
+      <!-- Segmented Toggle -->
+      <div class="segmented-toggle">
+        <button [class.active]="activeTab() === 'invoices'" (click)="activeTab.set('invoices'); onFilterChange('All')">
+          <i class="fas fa-file-invoice"></i> Invoices
+        </button>
+        <button [class.active]="activeTab() === 'expenses'" (click)="activeTab.set('expenses')">
+          <i class="fas fa-wallet"></i> Expenses
+        </button>
+      </div>
+
+      @if (activeTab() === 'invoices') {
+        <app-button variant="primary" icon="plus" (onClick)="openNewInvoice()">New Invoice</app-button>
+      } @else {
+        <app-button variant="primary" icon="plus" (onClick)="openNewExpense()">Log Expense</app-button>
+      }
+    </div>
+  </div>
+
+
+  <!-- ── DASHBOARD SUMMARY CARDS WITH ICON-IN-COLORED-CIRCLE ──── -->
+  @if (summary()) {
+    <div class="billing-summary">
+      <!-- Billed / Total -->
+      <div class="bs-card bsc-b card-interactive" (click)="clickStatCard('All')">
+        <div class="bs-card-content">
+          <div class="bs-lbl">Billed Total</div>
+          <div class="bs-val">{{ fmt(summary()?.total ?? 0) }}</div>
+        </div>
+        <div class="bs-icon-circle ic-blue">
+          <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+      </div>
+
+      <!-- Received -->
+      <div class="bs-card bsc-g card-interactive" (click)="clickStatCard('Paid')">
+        <div class="bs-card-content">
+          <div class="bs-lbl">Received</div>
+          <div class="bs-val">{{ fmt(summary()?.collected ?? 0) }}</div>
+        </div>
+        <div class="bs-icon-circle ic-green">
+          <i class="fas fa-circle-check"></i>
+        </div>
+      </div>
+
+      <!-- Outstanding -->
+      <div class="bs-card bsc-a card-interactive" (click)="clickStatCard('AllPending')">
+        <div class="bs-card-content">
+          <div class="bs-lbl">Outstanding</div>
+          <div class="bs-val">{{ fmt(summary()?.outstanding ?? 0) }}</div>
+        </div>
+        <div class="bs-icon-circle ic-amber">
+          <i class="fas fa-clock"></i>
+        </div>
+      </div>
+
+      <!-- Overdue -->
+      <div class="bs-card bsc-r card-interactive" [class.muted]="(summary()?.overdue ?? 0) === 0" (click)="clickStatCard('Overdue')">
+        <div class="bs-card-content">
+          <div class="bs-lbl">Overdue</div>
+          <div class="bs-val">{{ fmt(summary()?.overdue ?? 0) }}</div>
+        </div>
+        <div class="bs-icon-circle ic-red">
+          <i class="fas fa-circle-exclamation"></i>
+        </div>
+      </div>
+
+      <!-- Expenses card -->
+      <div class="bs-card bsc-purple card-interactive" (click)="activeTab.set('expenses')">
+        <div class="bs-card-content">
+          <div class="bs-lbl">Total Expenses</div>
+          <div class="bs-val">{{ fmt(summary()?.expenses ?? 0) }}</div>
+        </div>
+        <div class="bs-icon-circle ic-purple">
+          <i class="fas fa-receipt"></i>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  PENDING BILLABLES WIDGET (COLLAPSIBLE CARD)              -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'invoices' && pendingBillables().length > 0) {
+    <div class="pending-billables-widget card">
+      <div class="pbw-header" (click)="isBillablesCollapsed.set(!isBillablesCollapsed())">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fas" [class.fa-chevron-right]="isBillablesCollapsed()" [class.fa-chevron-down]="!isBillablesCollapsed()" style="color: var(--txt3); font-size: 12px;"></i>
+          <h4><i class="fas fa-clock" style="color: var(--acc);"></i> Billable Events Awaiting Invoice</h4>
+          <span class="badge b-a">{{ pendingBillables().length }}</span>
+        </div>
+        
+        <div class="pbw-header-actions" (click)="$event.stopPropagation()">
+          @if (selectedPendingIds().length > 0) {
+            @if (selectedPendingClientCount() > 1) {
+              <span class="badge b-r" style="margin-right: 8px; font-size: 11.5px; padding: 4px 10px;">
+                <i class="fas fa-exclamation-triangle"></i> {{ selectedPendingClientCount() }} different clients selected
+              </span>
+            } @else {
+              <span style="font-weight: 800; font-size: 13px; color: var(--g1); margin-right: 8px;">
+                {{ fmtPrecise(selectedPendingTotal()) }} selected
+              </span>
+            }
+          }
+          <button class="btn-primary btn-sm" [disabled]="selectedPendingIds().length === 0 || selectedPendingClientCount() > 1" (click)="generateInvoiceFromPending()">
+            <i class="fas fa-file-invoice-dollar"></i> Generate Bundle Invoice ({{ selectedPendingIds().length }})
+          </button>
+        </div>
+      </div>
+
+      @if (!isBillablesCollapsed()) {
+        <div class="pbw-batch-toolbar">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--txt2); cursor: pointer;">
+            <input type="checkbox" class="tbl-check" [checked]="isAllPendingSelected()" (change)="toggleSelectAllPending()">
+            Select All ({{ pendingBillables().length }})
+          </label>
+        </div>
+        <div class="pbw-grid">
+          @for (item of pendingBillables(); track item.id) {
+            <div class="pbw-item" [class.selected]="selectedPendingIds().includes(item.id)" [class.type-filing]="item.type === 'Filing'" [class.type-expense]="item.type === 'Expense'" [class.type-hearing]="item.type === 'Hearing'" (click)="togglePendingSelection(item.id)">
+              <div class="pbw-checkbox">
+                <input type="checkbox" class="tbl-check" [checked]="selectedPendingIds().includes(item.id)" (click)="$event.stopPropagation()" (change)="togglePendingSelection(item.id)">
+              </div>
+              <div class="pbw-info">
+                <div class="pbw-title">{{ item.title }}</div>
+                <div class="pbw-desc">{{ item.description }}</div>
+                <div class="pbw-meta">
+                  <span class="badge" [class.b-b]="item.type === 'Filing'" [class.b-r]="item.type === 'Expense'" [class.b-g]="item.type === 'Hearing'">{{ item.type }}</span>
+                  <span style="font-weight: 700; color: var(--txt);"><i class="fas fa-user-tie"></i> {{ item.clientName || 'No Client' }}</span>
+                  <span>{{ item.matterTitle }}</span>
+                  <span>{{ item.date }}</span>
+                </div>
+              </div>
+              <div class="pbw-amount">{{ fmtPrecise(item.suggestedAmount) }}</div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  INVOICES TAB VIEW                                        -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'invoices') {
+    <!-- Sub-filters with segmented active state & clean badges -->
+    <div class="filter-tabs pill-segmented" style="margin-bottom: 16px;">
+      <button class="pill" [class.active]="filter() === 'All'" (click)="onFilterChange('All')">
+        All @if (statusCounts.all > 0) { <span class="tab-badge">{{ statusCounts.all }}</span> }
+      </button>
+      <button class="pill" [class.active]="filter() === 'Unpaid'" (click)="onFilterChange('Unpaid')">
+        Unpaid @if (statusCounts.unpaid > 0) { <span class="tab-badge bsc-a-badge">{{ statusCounts.unpaid }}</span> }
+      </button>
+      <button class="pill" [class.active]="filter() === 'Partially Paid'" (click)="onFilterChange('Partially Paid')">
+        Partially Paid @if (statusCounts.partiallyPaid > 0) { <span class="tab-badge bsc-a-outline-badge">{{ statusCounts.partiallyPaid }}</span> }
+      </button>
+      <button class="pill" [class.active]="filter() === 'Paid'" (click)="onFilterChange('Paid')">
+        Paid @if (statusCounts.paid > 0) { <span class="tab-badge bsc-g-badge">{{ statusCounts.paid }}</span> }
+      </button>
+      <button class="pill" [class.active]="filter() === 'Overdue'" (click)="onFilterChange('Overdue')">
+        Overdue @if (statusCounts.overdue > 0) { <span class="tab-badge bsc-r-badge">{{ statusCounts.overdue }}</span> }
+      </button>
+      <button class="pill" [class.active]="filter() === 'Draft'" (click)="onFilterChange('Draft')">
+        Draft @if (statusCounts.draft > 0) { <span class="tab-badge">{{ statusCounts.draft }}</span> }
+      </button>
+    </div>
+
+    <!-- Bulk Actions Panel -->
+    @if (bulkSelectedInvoices().length > 0) {
+      <div class="bulk-actions-panel">
+        <span>Selected <strong>{{ bulkSelectedInvoices().length }}</strong> Invoices</span>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-outline btn-xs" (click)="bulkSendReminders()"><i class="fas fa-envelope"></i> Send Reminders</button>
+          <button class="btn-outline btn-xs" (click)="bulkExport()"><i class="fas fa-file-excel"></i> Export Selected</button>
+          <button class="btn-outline btn-xs" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" (click)="bulkDeleteInvoices()"><i class="fas fa-trash"></i> Delete Selected</button>
+          <button class="btn-xs" style="background: transparent; color: var(--txt3);" (click)="bulkSelectedInvoices.set([])">Clear</button>
+        </div>
+      </div>
+    }
+
+    <!-- Invoices Table -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+      @if (loading()) {
+        <div class="loading-row"><i class="fas fa-circle-notch fa-spin"></i> Loading invoices…</div>
+      } @else {
+        <table class="data-table tbl-sticky-head tbl-zebra" style="margin:0;">
+          <thead>
+            <tr>
+              <th width="40" style="text-align: center;">
+                <input type="checkbox" class="tbl-check" [checked]="bulkSelectedInvoices().length === billing().length && billing().length > 0" (change)="bulkSelectedInvoices().length === billing().length ? bulkSelectedInvoices.set([]) : bulkSelectedInvoices.set(billing().map(x => x.id))">
+              </th>
+              <th>Invoice No</th>
+              <th>Client</th>
+              <th>Matter</th>
+              <th>Amount</th>
+              <th>Paid</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Aging / Timeline</th>
+              <th width="100"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inv of billing(); track inv.id) {
+              <tr class="tr-hover" (click)="openInvoiceDetails(inv)">
+                <td style="text-align: center;" (click)="$event.stopPropagation()">
+                  <input type="checkbox" class="tbl-check" [checked]="bulkSelectedInvoices().includes(inv.id)" (change)="toggleInvoiceSelection(inv.id)">
+                </td>
+                <td class="mono font-bold">{{ inv.invoiceNo }}</td>
+                <td>
+                  <a [routerLink]="['/app/clients']" class="rollup-link" (click)="$event.stopPropagation()">{{ inv.clientName || '—' }}</a>
+                </td>
+                <td>
+                  <a [routerLink]="['/app/matters']" class="rollup-link" (click)="$event.stopPropagation()">{{ inv.matterTitle || '—' }}</a>
+                </td>
+                <td class="font-bold">{{ fmtPrecise(inv.amount) }}</td>
+                <td class="color-g">{{ fmtPrecise(inv.paidAmount || 0) }}</td>
+                <td>{{ inv.dueDate }}</td>
+                <td>
+                  <span class="badge" [class.b-g]="inv.status === 'Paid'" [class.b-r]="inv.status === 'Overdue'" [class.b-a]="inv.status === 'Unpaid'" [class.b-a-outline]="inv.status === 'Partially Paid'" [class.b-t]="inv.status === 'Draft'">
+                    {{ inv.status }}
+                  </span>
+                </td>
+                <td>
+                  @if (inv.status === 'Overdue') {
+                    <span class="due-red font-bold" style="font-size: 11px;"><i class="fas fa-circle-exclamation"></i> {{ getAgingLabel(inv) }}</span>
+                  } @else if (inv.status === 'Paid' && inv.paidDate) {
+                    <span class="due-green" style="font-size: 11.5px;"><i class="fas fa-check-circle"></i> Cleared on {{ inv.paidDate }}</span>
+                  } @else {
+                    <span style="font-size: 12px; color: var(--txt3);">—</span>
+                  }
+                </td>
+                <td style="text-align: right;" (click)="$event.stopPropagation()">
+                  <button class="btn-xs" style="background: var(--bgs); border: 1px solid var(--bdr); color: var(--txt);" (click)="openInvoiceDetails(inv)">View</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-cell" style="text-align:center; padding: 48px; color: var(--txt3);">
+                  <i class="fas fa-file-invoice-dollar" style="font-size: 32px; margin-bottom: 12px; display:block;"></i>
+                  No invoices match search criteria.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <app-paginator [page]="page()" [size]="size" [total]="total()" (change)="onPageChange($event)"></app-paginator>
+  }
+
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  EXPENSES TAB VIEW                                        -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'expenses') {
+    <div class="card" style="padding: 0; overflow: hidden;">
+      @if (expensesLoading()) {
+        <div class="loading-row"><i class="fas fa-circle-notch fa-spin"></i> Loading expenses…</div>
+      } @else {
+        <table class="data-table" style="margin:0;">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Matter</th>
+              <th>Client</th>
+              <th>Logged By</th>
+              <th>Amount</th>
+              <th>Billable to Client</th>
+              <th>Billing Status</th>
+              <th>Receipt</th>
+              <th width="80"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (exp of expenses(); track exp.id) {
+              <tr class="tr-hover" (click)="openExpenseDetails(exp)" style="cursor: pointer;">
+                <td>{{ exp.date }}</td>
+                <td class="font-bold">{{ exp.category }}</td>
+                <td>{{ exp.matterTitle || '—' }}</td>
+                <td>{{ exp.clientName || '—' }}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, var(--g1), var(--g2)); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      {{ (exp.createdByName || 'Admin').substring(0, 1).toUpperCase() }}
+                    </div>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--txt);">{{ exp.createdByName || 'Adv. Amit Sharma' }}</span>
+                  </div>
+                </td>
+                <td class="font-bold">{{ fmtPrecise(exp.amount) }}</td>
+                <td>
+                  @if (exp.billable) {
+                    <span class="badge b-g">Yes</span>
+                  } @else {
+                    <span class="badge b-t">No</span>
+                  }
+                </td>
+                <td>
+                  @if (exp.invoiced) {
+                    <span class="badge b-g"><i class="fas fa-check"></i> Invoiced</span>
+                  } @else if (exp.billable) {
+                    <span class="badge b-a"><i class="fas fa-clock"></i> Unbilled suggestion</span>
+                  } @else {
+                    <span class="badge b-t">Internal Expense</span>
+                  }
+                </td>
+                <td (click)="$event.stopPropagation()">
+                  @if (exp.receiptPath) {
+                    <button class="btn-xs btn-outline" style="display: inline-flex; align-items: center; gap: 4px; border-color: var(--g2); color: var(--g1); font-weight: 700;" (click)="viewReceipt(exp)" title="View attached receipt">
+                      <i class="fas fa-receipt"></i> View Receipt
+                    </button>
+                  } @else {
+                    <span style="color:var(--txt3); font-size:11px;">No attachment</span>
+                  }
+                </td>
+                <td style="text-align: right;" (click)="$event.stopPropagation()">
+                  <button class="btn-icon" style="color:#ef4444;" (click)="deleteExpense(exp)"><i class="fas fa-trash"></i></button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-cell" style="text-align:center; padding: 48px; color: var(--txt3);">
+                  <i class="fas fa-receipt" style="font-size: 32px; margin-bottom: 12px; display:block;"></i>
+                  No logged expenses found.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+      }
+    </div>
+  }
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: LOG EXPENSE ENTRY WITH RECEIPT ATTACHMENT             -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showExpenseForm()) {
+  <div class="modal-overlay" (click)="showExpenseForm.set(false)">
+    <div class="modal" style="max-width: 580px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-wallet"></i> Log Expense Entry</h3>
+        <button class="modal-close" (click)="showExpenseForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="fg">
+            <label>Linked Matter *</label>
+            <select [value]="expenseForm().matterId || ''" (change)="onExpenseMatterSelect($event)">
+              <option value="">-- Select Matter --</option>
+              @for (m of ds.matters(); track m.id) {
+                <option [value]="m.id">{{ m.title }} ({{ m.clientName }})</option>
+              }
+            </select>
+          </div>
+
+          <div class="fg">
+            <label>Client Name</label>
+            <input type="text" [value]="expenseForm().clientName || ''" disabled style="background:var(--bg2);">
+          </div>
+
+          <div class="fg">
+            <label>Expense Category *</label>
+            <select [value]="expenseForm().category" (change)="expenseForm.update(f => ({...f, category: $any($event.target).value}))">
+              <option value="Court Fees">Court Fees</option>
+              <option value="Travel">Travel</option>
+              <option value="Stamp Duty">Stamp Duty</option>
+              <option value="Photocopy & Printing">Photocopy & Printing</option>
+              <option value="Courier & Postage">Courier & Postage</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="fg">
+            <label>Amount (₹) *</label>
+            <input type="number" [value]="expenseForm().amount" (input)="expenseForm.update(f => ({...f, amount: +$any($event.target).value}))">
+          </div>
+
+          <div class="fg">
+            <label>Expense Date *</label>
+            <input type="date" [value]="expenseForm().date" (change)="expenseForm.update(f => ({...f, date: $any($event.target).value}))">
+          </div>
+
+          <div class="fg" style="display:flex; align-items:center; padding-top: 24px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0;">
+              <input type="checkbox" [checked]="expenseForm().billable" (change)="expenseForm.update(f => ({...f, billable: $any($event.target).checked}))">
+              Billable to Client (suggest in queue)
+            </label>
+          </div>
+
+          <!-- Attach Receipt Input -->
+          <div class="fg fg-full">
+            <label>Attach Receipt / Voucher (Image or Document)</label>
+            <input type="file" accept="image/*,application/pdf" (change)="onReceiptSelected($event)" style="border: 1.5px dashed var(--bdr2); padding: 10px; cursor: pointer; text-align: center; border-radius: 8px;">
+            @if (expenseForm().receiptPath) {
+              <div style="font-size: 11px; color: var(--g1); font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-check-circle"></i> Receipt attached successfully
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showExpenseForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="saveExpense()"><i class="fas fa-save"></i> Save Expense</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: VIEW RECEIPT PREVIEW                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showReceiptModal() && selectedReceipt(); as receipt) {
+  <div class="modal-overlay" style="z-index: 1200;" (click)="showReceiptModal.set(false)">
+    <div class="modal" style="width: 650px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-receipt" style="color: var(--g1);"></i> {{ receipt.name }}</h3>
+        <button class="modal-close" (click)="showReceiptModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="flex: 1; overflow-y: auto; background: #334155; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 380px;">
+        @if (receipt.url.startsWith('data:image/') || receipt.url.endsWith('.png') || receipt.url.endsWith('.jpg') || receipt.url.endsWith('.jpeg')) {
+          <img [src]="receipt.safeUrl" [alt]="receipt.name" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+        } @else {
+          <iframe [src]="receipt.safeUrl" style="width: 100%; height: 65vh; border: none; border-radius: 8px;"></iframe>
+        }
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; color: var(--txt3);">Verified Attachment</span>
+        <div style="display: flex; gap: 8px;">
+          <a [href]="receipt.url" [download]="receipt.name" target="_blank" class="btn-primary btn-sm" style="text-decoration: none;">
+            <i class="fas fa-download"></i> Download
+          </a>
+          <button class="btn-outline btn-sm" (click)="showReceiptModal.set(false)">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: VIEW EXPENSE DETAILS POP-UP                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showExpenseDetailsModal() && selectedExpense(); as exp) {
+  <div class="modal-overlay" style="z-index: 1100;" (click)="showExpenseDetailsModal.set(false)">
+    <div class="modal" style="width: 520px; max-width: 95%;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-wallet" style="color: var(--g1);"></i> Expense Details — #{{ exp.id }}</h3>
+        <button class="modal-close" (click)="showExpenseDetailsModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 20px;">
+        <!-- Header summary banner -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg2); padding: 14px 16px; border-radius: 10px; border: 1px solid var(--bdr);">
+          <div>
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--txt3); letter-spacing: 0.5px;">CATEGORY</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--txt); margin-top: 2px;">{{ exp.category }}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--txt3); letter-spacing: 0.5px;">AMOUNT</div>
+            <div style="font-size: 18px; font-weight: 900; color: var(--g1);">{{ fmtPrecise(exp.amount) }}</div>
+          </div>
+        </div>
+
+        <!-- Detail attributes grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="background: var(--card); border: 1px solid var(--bdr); padding: 10px 12px; border-radius: 8px;">
+            <span class="lbl">Expense Date</span>
+            <span style="font-weight: 700; font-size: 13px; color: var(--txt); display: block; margin-top: 3px;">{{ exp.date }}</span>
+          </div>
+
+          <div style="background: var(--card); border: 1px solid var(--bdr); padding: 10px 12px; border-radius: 8px;">
+            <span class="lbl">Billing Status</span>
+            <div style="margin-top: 4px;">
+              @if (exp.invoiced) {
+                <span class="badge b-g"><i class="fas fa-check"></i> Invoiced</span>
+              } @else if (exp.billable) {
+                <span class="badge b-a"><i class="fas fa-clock"></i> Unbilled suggestion</span>
+              } @else {
+                <span class="badge b-t">Internal Expense</span>
+              }
+            </div>
+          </div>
+
+          <div style="background: var(--card); border: 1px solid var(--bdr); padding: 10px 12px; border-radius: 8px;">
+            <span class="lbl">Linked Matter</span>
+            <span style="font-weight: 700; font-size: 13px; color: var(--txt); display: block; margin-top: 3px;">{{ exp.matterTitle || 'Unlinked' }}</span>
+          </div>
+
+          <div style="background: var(--card); border: 1px solid var(--bdr); padding: 10px 12px; border-radius: 8px;">
+            <span class="lbl">Client Name</span>
+            <span style="font-weight: 700; font-size: 13px; color: var(--txt); display: block; margin-top: 3px;">{{ exp.clientName || '—' }}</span>
+          </div>
+        </div>
+
+        <!-- Logged By User Pill -->
+        <div style="background: var(--card); border: 1px solid var(--bdr); padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span class="lbl">Logged By Advocate</span>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+              <div style="width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--g1), var(--g2)); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;">
+                {{ (exp.createdByName || 'Admin').substring(0, 1).toUpperCase() }}
+              </div>
+              <span style="font-weight: 700; font-size: 13px; color: var(--txt);">{{ exp.createdByName || 'Adv. Amit Sharma' }}</span>
+            </div>
+          </div>
+
+          <!-- Billable Readonly Badge -->
+          <div>
+            @if (exp.billable) {
+              <span class="badge b-g">Billable to Client</span>
+            } @else {
+              <span class="badge b-t">Non-Billable</span>
+            }
+          </div>
+        </div>
+
+        <!-- Attached Receipt preview action inside modal -->
+        @if (exp.receiptPath) {
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1.5px solid rgba(16, 185, 129, 0.2); padding: 12px 14px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fas fa-file-invoice" style="font-size: 20px; color: var(--g1);"></i>
+              <div>
+                <div style="font-size: 12.5px; font-weight: 700; color: var(--txt);">Receipt Attached</div>
+                <div style="font-size: 11px; color: var(--txt3);">Verified proof attached</div>
+              </div>
+            </div>
+            <button class="btn-primary btn-xs" (click)="viewReceipt(exp)">
+              <i class="fas fa-eye"></i> View Attachment
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn-outline btn-sm" style="color: #ef4444; border-color: #ef4444;" (click)="deleteExpense(exp); showExpenseDetailsModal.set(false)">
+          <i class="fas fa-trash"></i> Delete Entry
+        </button>
+        <button class="btn-primary btn-sm" (click)="showExpenseDetailsModal.set(false)">Close</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SIDE DRAWER: INVOICE DETAILS & PAYMENT TIMELINE               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showDrawer() && selectedInvoice(); as inv) {
+  <div class="drawer-overlay" (click)="showDrawer.set(false)"></div>
+  <div class="side-drawer open">
+    <div class="drawer-header">
+      <div>
+        <h3>Invoice details — {{ inv.invoiceNo }}</h3>
+        <span class="badge" [class.b-g]="inv.status === 'Paid'" [class.b-r]="inv.status === 'Overdue'" [class.b-a]="inv.status === 'Unpaid'" [class.b-a-outline]="inv.status === 'Partially Paid'">
+          {{ inv.status }}
+        </span>
+      </div>
+      <button class="modal-close" (click)="showDrawer.set(false)"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div class="drawer-body">
+      <!-- Invoice header details -->
+      <div class="drawer-section">
+        <div style="font-size:12px; color:var(--txt3); margin-bottom: 4px;">CLIENT</div>
+        <div style="font-weight: 800; font-size:14.5px; color:var(--txt);">{{ inv.clientName }}</div>
+        <div style="font-size:12.5px; color:var(--txt2); margin-top:2px;">{{ inv.matterTitle }}</div>
+      </div>
+
+      <div class="drawer-section" style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div>
+          <span class="lbl">Due Date</span>
+          <span style="font-weight: 700;">{{ inv.dueDate || '—' }}</span>
+        </div>
+        <div>
+          <span class="lbl">Cleared Date</span>
+          <span style="font-weight: 700;">{{ inv.paidDate || '—' }}</span>
+        </div>
+      </div>
+
+      <!-- Financial Rollup in Drawer -->
+      <div class="drawer-section billing-amount-rollup">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+          <span>Billed Amount:</span>
+          <span class="font-bold">{{ fmtPrecise(inv.amount) }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 6px; color: var(--g1);">
+          <span>Paid Amount:</span>
+          <span class="font-bold">{{ fmtPrecise(inv.paidAmount || 0) }}</span>
+        </div>
+        <hr style="border:none; border-top:1.5px solid var(--bdr); margin: 8px 0;">
+        <div style="display:flex; justify-content:space-between; font-weight: 800; font-size: 14px; color: var(--red);">
+          <span>Outstanding Balance:</span>
+          <span>{{ fmtPrecise(inv.amount - (inv.paidAmount || 0)) }}</span>
+        </div>
+      </div>
+
+      <!-- Line items table -->
+      <div class="drawer-section">
+        <h5 class="drawer-section-title"><i class="fas fa-list-ul"></i> Line Items Breakdown</h5>
+        <div class="line-items-breakdown-list">
+          @for (item of inv.lineItems; track item.id) {
+            <div class="lib-row">
+              <div class="lib-details">
+                <span class="lib-type badge b-t">{{ item.feeType }}</span>
+                <p class="lib-desc">{{ item.description }}</p>
+              </div>
+              <div class="lib-amount">{{ fmtPrecise(item.amount) }}</div>
+            </div>
+          } @empty {
+            <div class="lib-row">
+              <div class="lib-details">
+                <span class="lib-type badge b-t">Retainer</span>
+                <p class="lib-desc">{{ inv.description || 'Standard retainer fee invoice' }}</p>
+              </div>
+              <div class="lib-amount">{{ fmtPrecise(inv.amount) }}</div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Payment timeline -->
+      <div class="drawer-section">
+        <h5 class="drawer-section-title"><i class="fas fa-history"></i> Payment History Timeline</h5>
+        <div class="payment-history-timeline">
+          @for (pay of selectedInvoicePayments(); track pay.id) {
+            <div class="pht-step">
+              <div class="pht-dot"></div>
+              <div class="pht-info">
+                <div style="display:flex; justify-content:space-between; font-weight: 700; font-size:12.5px;">
+                  <span>Payment Recorded ({{ pay.mode }})</span>
+                  <span class="color-g">+{{ fmtPrecise(pay.amount) }}</span>
+                </div>
+                <div style="font-size:11px; color:var(--txt3); margin-top:2px;">
+                  Date: {{ pay.paymentDate }} · Ref No: {{ pay.referenceNo || 'None' }}
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <p style="font-size:12px; color:var(--txt3); font-style:italic;">No payments recorded yet.</p>
+          }
+        </div>
+      </div>
+
+      <!-- Drawer actions -->
+      <div class="drawer-section actions-grid" style="display:flex; flex-direction:column; gap:8px;">
+        @if (inv.status !== 'Paid') {
+          <button class="btn-primary" (click)="openRecordPayment(inv)"><i class="fas fa-cash-register"></i> Record Payment</button>
+        }
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn-outline" (click)="triggerReminder(inv)"><i class="fas fa-bell"></i> Send Reminder</button>
+          <button class="btn-outline" (click)="printInvoice(inv)"><i class="fas fa-print"></i> Print PDF</button>
+        </div>
+        <button class="btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" (click)="deleteInvoice(inv)"><i class="fas fa-trash"></i> Delete Invoice</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: CREATE NEW INVOICE (MULTI-LINE)                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showForm()) {
+  <div class="modal-overlay" (click)="showForm.set(false)">
+    <div class="modal" style="width:700px; max-width:95%; max-height: 90vh; display:flex; flex-direction:column;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-invoice-dollar"></i> Generate Multi-line Invoice</h3>
+        <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      
+      <div class="modal-body" style="overflow-y:auto; flex:1; padding: 20px;">
+        <div class="form-grid">
+          <!-- Client & Matter selection -->
+          <div class="fg">
+            <label>Linked Matter *</label>
+            <select [value]="form().matterId || ''" (change)="onInvoiceMatterSelect($event)">
+              <option value="">-- Select Matter --</option>
+              @for (m of ds.matters(); track m.id) {
+                <option [value]="m.id">{{ m.title }} ({{ m.clientName }})</option>
+              }
+            </select>
+          </div>
+
+          <div class="fg">
+            <label>Client Name *</label>
+            <input type="text" [value]="form().clientName || ''" (input)="form.update(f => ({...f, clientName: $any($event.target).value}))" placeholder="Client Name">
+          </div>
+
+          <div class="fg">
+            <label>Due Date *</label>
+            <input type="date" [value]="form().dueDate || ''" (change)="form.update(f => ({...f, dueDate: $any($event.target).value}))">
+          </div>
+
+          <div class="fg fg-full">
+            <label>Summary / Memo description</label>
+            <textarea rows="2" [value]="form().description || ''" maxlength="500" (input)="form.update(f => ({...f, description: $any($event.target).value}))" placeholder="Brief summary of the invoice items…"></textarea>
+          </div>
+
+          <!-- Dynamic Line Items Builder -->
+          <div class="fg fg-full line-items-builder-container" style="margin-top: 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+              <label style="margin: 0; font-weight:800; font-size:13px;"><i class="fas fa-list-ol"></i> Line Items Breakdown</label>
+              <button class="btn-xs btn-outline" (click)="addLineItem()"><i class="fas fa-plus"></i> Add Item</button>
+            </div>
+            
+            <div class="lines-list" style="display:flex; flex-direction:column; gap: 8px;">
+              @for (item of form().lineItems; track $index; let idx = $index) {
+                <div class="line-builder-row" style="display:grid; grid-template-columns: 140px 1fr 120px 40px; gap:8px; align-items:center;">
+                  <select [(ngModel)]="item.feeType" style="height:36px; padding: 0 8px;">
+                    <option value="Retainer">Retainer</option>
+                    <option value="Appearance Fees">Appearance Fees</option>
+                    <option value="Drafting Fees">Drafting Fees</option>
+                    <option value="Consultation">Consultation</option>
+                    <option value="Filing Charges">Filing Charges</option>
+                    <option value="Reimbursement">Reimbursement</option>
+                  </select>
+                  <input type="text" [(ngModel)]="item.description" maxlength="200" placeholder="Description of work done…" style="height:36px;">
+                  <input type="number" [(ngModel)]="item.amount" placeholder="Amount (₹)" style="height:36px;">
+                  <button class="btn-icon" style="color:#ef4444; height:36px; display:inline-flex; align-items:center; justify-content:center;" (click)="removeLineItem(idx)"><i class="fas fa-trash-can"></i></button>
+                </div>
+              }
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 16px; background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr);">
+              <span class="font-bold">Total Amount to Invoice:</span>
+              <span class="font-bold" style="font-size:16px; color:var(--g1);">{{ fmtPrecise(invoiceFormTotal) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="saveInvoice()"><i class="fas fa-check"></i> Generate Invoice</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MODAL: RECORD PAYMENT                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showPaymentModal() && selectedInvoice(); as inv) {
+  <div class="modal-overlay" (click)="showPaymentModal.set(false)">
+    <div class="modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-cash-register"></i> Record Payment for {{ inv.invoiceNo }}</h3>
+        <button class="modal-close" (click)="showPaymentModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--bdr); margin-bottom: 16px;">
+          <div style="font-size:12px; color:var(--txt3);">TOTAL INVOICE AMOUNT</div>
+          <div style="font-size: 18px; font-weight:800; color:var(--txt);">{{ fmtPrecise(inv.amount) }}</div>
+          <div style="font-size:12px; color:var(--txt3); margin-top: 8px;">OUTSTANDING BALANCE</div>
+          <div style="font-size: 15px; font-weight:700; color:var(--red);">{{ fmtPrecise(inv.amount - (inv.paidAmount || 0)) }}</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="fg fg-full">
+            <label>Payment Amount *</label>
+            <input type="number" [value]="paymentForm().amount" (input)="paymentForm.update(f => ({...f, amount: +$any($event.target).value}))">
+          </div>
+
+          <div class="fg">
+            <label>Payment Date *</label>
+            <input type="date" [value]="paymentForm().paymentDate" (change)="paymentForm.update(f => ({...f, paymentDate: $any($event.target).value}))">
+          </div>
+
+          <div class="fg">
+            <label>Payment Mode *</label>
+            <select [value]="paymentForm().mode" (change)="paymentForm.update(f => ({...f, mode: $any($event.target).value}))">
+              <option value="UPI">UPI / Net Banking</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Credit/Debit Card</option>
+            </select>
+          </div>
+
+          <div class="fg fg-full">
+            <label>Transaction Reference No / Cheque No</label>
+            <input type="text" [value]="paymentForm().referenceNo || ''" maxlength="100" (input)="paymentForm.update(f => ({...f, referenceNo: $any($event.target).value}))" placeholder="e.g. UPI Ref / Bank Txn ID">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="showPaymentModal.set(false)">Cancel</button>
+        <button class="btn-primary" (click)="savePayment()"><i class="fas fa-check"></i> Record Payment</button>
+      </div>
+    </div>
+  </div>
+}

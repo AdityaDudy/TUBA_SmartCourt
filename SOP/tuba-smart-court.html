@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUBA Smart Court — CourtOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{
+  --g1:#0d6637;--g2:#16a34a;--g3:#22c55e;--g-soft:#dcfce7;--g-mid:#bbf7d0;
+  --acc:#d97706;--acc-soft:#fef3c7;--acc-mid:#fde68a;
+  --red:#dc2626;--red-soft:#fee2e2;
+  --blue:#1d4ed8;--blue-soft:#dbeafe;
+  --purple:#7c3aed;--purple-soft:#ede9fe;
+  --teal:#0f766e;--teal-soft:#ccfbf1;
+  --txt:#0f172a;--txt2:#475569;--txt3:#94a3b8;
+  --bg:#f0fdf4;--bgc:#ffffff;--bgs:#f8fafb;
+  --bdr:#e2e8f0;--bdr2:#cbd5e1;
+  --sb:#1e3a5f;
+  --r:10px;--rl:14px;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.05);
+  --shm:0 4px 16px rgba(0,0,0,.1);
+  --shl:0 8px 32px rgba(0,0,0,.14);
+  --sw:248px;--th:60px;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+[data-theme=dark]{
+  --g1:#16a34a;--g2:#22c55e;--g3:#4ade80;--g-soft:#052e16;--g-mid:#14532d;
+  --txt:#f1f5f9;--txt2:#94a3b8;--txt3:#64748b;
+  --bg:#030f07;--bgc:#0d1f12;--bgs:#111f16;
+  --bdr:#1a2e20;--bdr2:#1e3a26;--sb:#0d1830;
+  --acc:#f59e0b;--acc-soft:#1c1004;
+  --red:#ef4444;--red-soft:#1c0808;
+  --blue:#60a5fa;--blue-soft:#0c1a3a;
+  --purple:#a78bfa;--purple-soft:#1e1040;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--txt);min-height:100vh;display:flex;font-size:13px;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+
+/* SIDEBAR */
+.sb{width:var(--sw);background:var(--sb);height:100vh;position:fixed;left:0;top:0;display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+.sb-logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--acc),#b45309);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;font-weight:900;flex-shrink:0}
+.sb-logo-name{color:#ffffff;font-size:14px;font-weight:800;letter-spacing:-.3px;line-height:1.2}
+.sb-logo-sub{color:rgba(255,255,255,.45);font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-top:1px}
+.sb-sec{padding:12px 10px 2px}
+.sb-sec-lbl{color:rgba(255,255,255,.35);font-size:10px;text-transform:uppercase;letter-spacing:.8px;padding:0 8px;margin-bottom:3px}
+.nav{list-style:none}
+.nav-item{margin-bottom:1px}
+.nav-a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;color:rgba(255,255,255,.6);text-decoration:none;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;position:relative;user-select:none}
+.nav-a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.nav-a.active{color:#fff;background:rgba(255,255,255,.14);font-weight:700}
+.nav-a.active::before{content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--g2);border-radius:0 3px 3px 0}
+.nav-icon{width:17px;text-align:center;font-size:13px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px}
+.sb-user{margin-top:auto;padding:10px;border-top:1px solid rgba(255,255,255,.1)}
+.sb-user-card{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s}
+.sb-user-card:hover{background:rgba(255,255,255,.08)}
+.sb-av{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0}
+.sb-uname{color:#ffffff;font-size:12px;font-weight:600}
+.sb-urole{color:rgba(255,255,255,.45);font-size:10px;margin-top:1px}
+
+/* TOPBAR */
+.topbar{height:var(--th);background:var(--bgc);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.topbar-title{font-size:15px;font-weight:800;color:var(--txt);flex:1;display:flex;align-items:center;gap:9px;letter-spacing:-.3px}
+.page-icon{width:28px;height:28px;background:var(--g-soft);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--g1);font-size:12px}
+.topbar-acts{display:flex;align-items:center;gap:7px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);text-decoration:none;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;box-shadow:0 2px 6px rgba(13,102,55,.28)}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-primary:active{transform:scale(.97)}
+.btn-outline{background:var(--bgc);color:var(--txt2);border:1px solid var(--bdr2)}
+.btn-outline:hover{background:var(--bgs);color:var(--g1);border-color:var(--g2)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{opacity:.88}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-xs{padding:3px 9px;font-size:11px}
+.icon-btn{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--bgc);border:1px solid var(--bdr);color:var(--txt2);cursor:pointer;font-size:13px;transition:all .15s}
+.icon-btn:hover{background:var(--g-soft);border-color:var(--g2);color:var(--g1)}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--bgs);border:1px solid var(--bdr);border-radius:8px;padding:0 11px;height:34px;width:220px;transition:border-color .15s}
+.search-box:focus-within{border-color:var(--g2);background:var(--bgc)}
+.search-box input{border:none;background:transparent;font-size:12.5px;color:var(--txt);outline:none;width:100%;font-family:var(--font)}
+.search-box input::placeholder{color:var(--txt3)}
+.search-box i{color:var(--txt3);font-size:12px;flex-shrink:0}
+
+/* LAYOUT */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.content{flex:1;padding:18px 20px;overflow-y:auto}
+.page{display:none}.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--bgc);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--sh)}
+.card-hd{padding:13px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card-title{font-size:13px;font-weight:700;color:var(--txt);flex:1}
+.card-body{padding:16px 18px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.sc{background:var(--bgc);border:1px solid var(--bdr);border-radius:var(--rl);padding:14px 16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--rl) var(--rl) 0 0}
+.sc.g::after{background:linear-gradient(90deg,var(--g1),var(--g2))}.sc.a::after{background:var(--acc)}.sc.r::after{background:var(--red)}.sc.b::after{background:var(--blue)}.sc.p::after{background:var(--purple)}.sc.t::after{background:var(--teal)}
+.sc:hover{transform:translateY(-2px);box-shadow:var(--shm)}
+.sc-lbl{font-size:10.5px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.sc-val{font-size:26px;font-weight:800;color:var(--txt);line-height:1;margin-bottom:5px}
+.sc-meta{font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:3px}
+.sc-meta.up{color:var(--g2)}.sc-meta.dn{color:var(--red)}
+.sc-icon{position:absolute;right:12px;top:14px;font-size:22px;opacity:.06}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:10.5px;font-weight:700}
+.b-g{background:var(--g-soft);color:var(--g1)}.b-a{background:var(--acc-soft);color:var(--acc)}.b-r{background:var(--red-soft);color:var(--red)}.b-b{background:var(--blue-soft);color:var(--blue)}.b-p{background:var(--purple-soft);color:var(--purple)}.b-t{background:var(--teal-soft);color:var(--teal)}.b-gr{background:var(--bgs);color:var(--txt2);border:1px solid var(--bdr)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10.5px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;padding:9px 13px;background:var(--bgs);border-bottom:1px solid var(--bdr)}
+td{padding:10px 13px;font-size:12.5px;border-bottom:1px solid var(--bdr);color:var(--txt);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .1s;cursor:pointer}
+tbody tr:hover td{background:var(--g-soft)}
+
+/* FORM */
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.f-group{display:flex;flex-direction:column;gap:5px}
+.f-full{grid-column:span 2}
+.f-label{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px}
+.f-ctrl{padding:9px 12px;border:1.5px solid var(--bdr2);border-radius:8px;font-size:13px;font-family:var(--font);color:var(--txt);background:var(--bgc);outline:none;transition:all .15s;width:100%}
+.f-ctrl:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+textarea.f-ctrl{resize:vertical;min-height:75px}
+select.f-ctrl{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:15px;padding-right:28px}
+
+/* PILLS / TABS */
+.pills{display:flex;gap:5px;flex-wrap:wrap}
+.pill{padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--bdr2);color:var(--txt2);transition:all .15s;user-select:none}
+.pill:hover:not(.active){border-color:var(--g2);color:var(--g1);background:var(--g-soft)}
+.pill.active{background:var(--g1);color:#fff;border-color:var(--g1)}
+.tab-row{display:flex;border-bottom:1px solid var(--bdr);margin-bottom:16px}
+.tab-btn{padding:9px 16px;font-size:12.5px;font-weight:600;color:var(--txt3);border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;transition:all .15s;font-family:var(--font)}
+.tab-btn.active{color:var(--g1);border-bottom-color:var(--g1)}
+
+/* MODAL */
+.modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:800;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.modal-bd.open{display:flex}
+.modal{background:var(--bgc);border-radius:var(--rl);box-shadow:var(--shl);width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:mIn .18s ease}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-lg{width:720px}
+.modal-hd{padding:16px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bgc);z-index:1}
+.modal-hd h3{font-size:14px;font-weight:800;flex:1}
+.modal-body{padding:20px}
+.modal-ft{padding:12px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--bgc)}
+
+/* TIMELINE */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--bdr)}
+.tl-item{position:relative;padding-bottom:16px}
+.tl-item::before{content:'';position:absolute;left:-18px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--g2);border:2px solid var(--bgc);box-shadow:0 0 0 1px var(--g2)}
+.tl-item.past::before{background:var(--txt3);box-shadow:0 0 0 1px var(--txt3)}
+.tl-item.urgent::before{background:var(--red);box-shadow:0 0 0 1px var(--red);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 1px var(--red)}50%{box-shadow:0 0 0 4px rgba(220,38,38,.2)}}
+.tl-date{font-size:10.5px;color:var(--txt3);font-weight:600;margin-bottom:2px}
+.tl-content{font-size:13px;color:var(--txt);font-weight:600}
+.tl-sub{font-size:11.5px;color:var(--txt3);margin-top:2px}
+
+/* PROGRESS */
+.progress{height:5px;background:var(--bgs);border-radius:100px;overflow:hidden}
+.progress-bar{height:100%;border-radius:100px;transition:width .6s}
+.prog-g{background:linear-gradient(90deg,var(--g1),var(--g3))}.prog-a{background:var(--acc)}.prog-r{background:var(--red)}
+
+/* KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kb-col{background:var(--bgs);border:1px solid var(--bdr);border-radius:var(--rl);padding:11px;min-height:260px}
+.kb-col-hd{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between;padding-bottom:9px}
+.kb-count{width:20px;height:20px;border-radius:50%;background:var(--bgc);border:1px solid var(--bdr);font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--txt3)}
+.kb-card{background:var(--bgc);border:1px solid var(--bdr);border-radius:8px;padding:11px;margin-bottom:7px;cursor:pointer;transition:all .15s}
+.kb-card:hover{box-shadow:var(--shm);border-color:var(--g2)}
+.kb-card-title{font-size:12.5px;font-weight:600;color:var(--txt);margin-bottom:6px;line-height:1.4}
+.kb-card-meta{font-size:11px;color:var(--txt3);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+/* MISC */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.fx{display:flex}.fxc{display:flex;align-items:center}.fxb{display:flex;align-items:center;justify-content:space-between}
+.gap6{gap:6px}.gap8{gap:8px}.gap10{gap:10px}.gap12{gap:12px}
+.txt-muted{color:var(--txt3)}.txt-sm{font-size:11.5px}.txt-xs{font-size:10.5px}.txt-bold{font-weight:700}
+.divider-label{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px;margin:14px 0 10px}
+.divider-label::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.avatar{display:flex;align-items:center;justify-content:center;border-radius:9px;color:#fff;font-weight:800;flex-shrink:0}
+.alert{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:12.5px;margin-bottom:14px;line-height:1.5}
+.alert-r{background:var(--red-soft);color:var(--red);border:1px solid rgba(220,38,38,.18)}
+.alert-g{background:var(--g-soft);color:var(--g1);border:1px solid rgba(22,163,74,.18)}
+.alert-a{background:var(--acc-soft);color:var(--acc);border:1px solid rgba(217,119,6,.18)}
+.alert-b{background:var(--blue-soft);color:var(--blue);border:1px solid rgba(29,78,216,.18)}
+.doc-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .1s}
+.doc-row:hover{background:var(--g-soft)}.doc-row:last-child{border-bottom:none}
+.doc-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.task-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--bdr)}
+.task-row:last-child{border-bottom:none}
+.task-cb{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--bdr2);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;transition:all .15s}
+.task-cb.done{background:var(--g2);border-color:var(--g2);color:#fff}
+.cause-row{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .1s}
+.cause-row:hover{background:var(--bgs)}.cause-row:last-child{border-bottom:none}
+.cause-num{width:28px;height:28px;border-radius:7px;background:var(--g-soft);color:var(--g1);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--g-mid)}
+.cause-row.urg{border-left:3px solid var(--red)}
+.qa-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:9px;margin-bottom:18px}
+.qa-btn{display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 6px;background:var(--bgc);border:1px solid var(--bdr);border-radius:var(--r);cursor:pointer;transition:all .15s}
+.qa-btn:hover{background:var(--g-soft);border-color:var(--g2);transform:translateY(-2px);box-shadow:var(--shm)}
+.qa-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.qa-label{font-size:10.5px;font-weight:700;color:var(--txt2);text-align:center;line-height:1.3}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:70px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-body{width:100%;border-radius:3px 3px 0 0}
+.bar-lbl{font-size:9.5px;color:var(--txt3)}
+.perm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.perm-item{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid var(--bdr);background:var(--bgs);cursor:pointer;transition:all .15s}
+.perm-item.on{border-color:var(--g2);background:var(--g-soft)}
+.perm-label{font-size:11.5px;font-weight:700;color:var(--txt)}
+.perm-sub{font-size:10px;color:var(--txt3);margin-top:1px}
+.s-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.s-on{background:#22c55e}.s-off{background:var(--txt3)}.s-ina{background:var(--red)}
+.sess-card{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--bdr)}
+.sess-card:last-child{border-bottom:none}
+.audit-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);font-size:12px}
+.audit-row:last-child{border-bottom:none}
+.role-opts{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+.role-opt{padding:6px 13px;border-radius:7px;border:1.5px solid var(--bdr);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;color:var(--txt2)}
+.role-opt.active{border-color:var(--g1);background:var(--g-soft);color:var(--g1)}
+.notif-row{display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .1s}
+.notif-row:hover{background:var(--bgs)}.notif-row:last-child{border-bottom:none}
+.master-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px}
+.master-card{background:var(--bgc);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .15s}
+.master-card:hover{border-color:var(--g2);transform:translateY(-2px);box-shadow:var(--shm)}
+.master-card-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px}
+.master-card-title{font-size:13px;font-weight:800;color:var(--txt);margin-bottom:3px}
+.master-card-count{font-size:11px;color:var(--txt3)}
+.master-list-item{display:flex;align-items:center;gap:9px;padding:9px 14px;border-bottom:1px solid var(--bdr)}
+.master-list-item:last-child{border-bottom:none}
+.theme-tog{width:34px;height:20px;border-radius:10px;background:var(--bdr2);position:relative;cursor:pointer;border:none;transition:background .2s}
+.theme-tog.dark{background:var(--g1)}
+.theme-tog::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.theme-tog.dark::after{transform:translateX(14px)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;border-radius:7px;cursor:pointer;transition:background .1s;position:relative;color:var(--txt)}
+.cal-day:hover{background:var(--bgs)}
+.cal-day.today{background:var(--g1);color:#fff;font-weight:800}
+.cal-day.has-ev::after{content:'';position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--acc)}
+.cal-day.today.has-ev::after{background:#fff}
+.cal-day.oth{color:var(--txt3);opacity:.4}
+.cal-hdr{font-size:10px;font-weight:700;color:var(--txt3);text-align:center;padding:3px 0;text-transform:uppercase}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;z-index:9999;display:flex;font-family:var(--font)}
+.l-left{width:420px;flex-shrink:0;background:#eef4fb;display:flex;flex-direction:column;padding:36px 42px;overflow-y:auto;box-shadow:4px 0 30px rgba(0,0,0,.07)}
+[data-theme=dark] .l-left{background:#0a1520}
+.l-right{flex:1;background:linear-gradient(140deg,#052e16 0%,#0d6637 50%,#166534 100%);display:flex;align-items:center;justify-content:center;padding:40px;position:relative;overflow:hidden}
+.l-right::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(255,255,255,.04) 0%,transparent 60%)}
+.l-brand{display:flex;align-items:center;gap:11px;margin-bottom:34px}
+.l-brand-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--acc),#b45309);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:900}
+.l-brand-name{font-size:17px;font-weight:900;color:var(--txt);letter-spacing:-.5px}
+.l-brand-sub{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.l-h{font-size:22px;font-weight:900;color:var(--txt);margin-bottom:5px;letter-spacing:-.5px}
+.l-s{font-size:13px;color:var(--txt3);margin-bottom:26px;line-height:1.6}
+.l-fg{margin-bottom:14px}
+.l-lbl{display:block;font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.l-wrap{position:relative}
+.l-inp{width:100%;padding:10px 13px 10px 39px;border:1.5px solid #c8d9ec;border-radius:9px;font-size:13.5px;font-family:var(--font);color:var(--txt);background:#fff;outline:none;transition:all .15s}
+.l-inp:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.l-ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:13px;pointer-events:none}
+.l-tog{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:13px;cursor:pointer}
+.l-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.l-chk{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--txt2)}
+.l-chk input{accent-color:var(--g2);width:14px;height:14px}
+.l-link{font-size:12.5px;color:var(--g1);text-decoration:none;font-weight:700}
+.l-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:9px;transition:all .2s;box-shadow:0 3px 10px rgba(13,102,55,.3)}
+.l-btn:hover{opacity:.9;transform:translateY(-1px)}
+.l-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--txt3);font-size:11.5px}
+.l-divider::before,.l-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.demo-pills{display:flex;flex-direction:column;gap:7px}
+.demo-pill{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1px solid #c8d9ec;cursor:pointer;background:#fff;transition:all .15s}
+.demo-pill:hover{border-color:var(--g2);background:var(--g-soft)}
+.demo-pill-av{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.demo-pill-name{font-size:12px;font-weight:800;color:var(--txt)}
+.demo-pill-role{font-size:10.5px;color:var(--txt3)}
+.l-footer{margin-top:auto;padding-top:20px;border-top:1px solid #c8d9ec;font-size:11px;color:var(--txt3);text-align:center;line-height:1.7}
+.l-footer a{color:var(--g1);text-decoration:none;font-weight:600}
+.otp-inputs{display:flex;gap:9px;justify-content:center;margin:18px 0}
+.otp-inp{width:46px;height:54px;text-align:center;font-size:20px;font-weight:800;border:1.5px solid var(--bdr2);border-radius:8px;background:var(--bgc);color:var(--txt);outline:none;font-family:var(--mono);transition:all .15s}
+.otp-inp:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.lr-tag{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:100px;padding:5px 14px;margin-bottom:22px}
+.lr-tag span{font-size:11.5px;font-weight:800;color:rgba(255,255,255,.9);text-transform:uppercase;letter-spacing:.8px}
+.lr-h2{font-size:28px;font-weight:900;color:#fff;margin-bottom:12px;letter-spacing:-.6px;line-height:1.2;text-align:center}
+.lr-p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:28px;text-align:center}
+.lr-features{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+.lr-fc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 13px}
+.lr-fc i{font-size:18px;color:var(--acc-mid);margin-bottom:7px;display:block}
+.lr-fc .fc-t{font-size:12.5px;font-weight:800;color:#fff;margin-bottom:2px}
+.lr-fc .fc-s{font-size:11px;color:rgba(255,255,255,.45);line-height:1.4}
+.lr-stats{display:flex;gap:24px;justify-content:center}
+.lr-stat .ls-v{font-size:24px;font-weight:900;color:var(--acc-mid);text-align:center}
+.lr-stat .ls-l{font-size:10.5px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;text-align:center}
+body.logged-out .main,body.logged-out .sb{display:none!important}
+@keyframes slideIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body class="logged-out">
+
+<!-- ========== LOGIN ========== -->
+<div id="login-screen">
+  <div class="l-left">
+    <div class="l-brand">
+      <div class="l-brand-icon">T</div>
+      <div><div class="l-brand-name">TUBA Smart Court</div><div class="l-brand-sub">CourtOS Platform</div></div>
+    </div>
+    <div id="v-login">
+      <div class="l-h">Welcome back</div>
+      <div class="l-s">Sign in to your intelligent legal workspace — matters, hearings and cause lists unified.</div>
+      <div class="l-fg"><label class="l-lbl">Email / User ID</label><div class="l-wrap"><i class="fas fa-envelope l-ic"></i><input class="l-inp" type="email" id="lemail" value="amit@tubalaw.com"></div></div>
+      <div class="l-fg"><label class="l-lbl">Password</label><div class="l-wrap"><i class="fas fa-lock l-ic"></i><input class="l-inp" type="password" id="lpass" value="Password@123"><i class="fas fa-eye l-tog" id="ptog" onclick="togglePwd()"></i></div></div>
+      <div class="l-row">
+        <label class="l-chk"><input type="checkbox" checked><span>Remember me</span></label>
+        <a href="#" class="l-link" onclick="showV('v-forgot');return false">Forgot password?</a>
+      </div>
+      <button class="l-btn" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Sign In to CourtOS</button>
+      <div class="l-divider">or continue as demo user</div>
+      <div class="demo-pills">
+        <div class="demo-pill" onclick="ql('admin')"><div class="demo-pill-av" style="background:linear-gradient(135deg,#b45309,#d97706)">AS</div><div style="flex:1"><div class="demo-pill-name">Adv. Amit Sharma</div><div class="demo-pill-role">Firm Owner · Admin</div></div><span class="badge b-a">Admin</span></div>
+        <div class="demo-pill" onclick="ql('advocate')"><div class="demo-pill-av" style="background:linear-gradient(135deg,#0d6637,#16a34a)">PK</div><div style="flex:1"><div class="demo-pill-name">Adv. Priya Kapoor</div><div class="demo-pill-role">Senior Advocate</div></div><span class="badge b-g">Sr. Adv</span></div>
+        <div class="demo-pill" onclick="ql('clerk')"><div class="demo-pill-av" style="background:linear-gradient(135deg,#0f766e,#0d9488)">RM</div><div style="flex:1"><div class="demo-pill-name">Ravi Mehta</div><div class="demo-pill-role">Legal Clerk · Filing</div></div><span class="badge b-t">Clerk</span></div>
+      </div>
+    </div>
+    <div id="v-forgot" style="display:none">
+      <button onclick="showV('v-login')" style="background:none;border:none;cursor:pointer;color:var(--g1);font-size:12.5px;font-weight:700;margin-bottom:18px;padding:0"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="l-h">Reset Password</div><div class="l-s">Enter your registered email to receive an OTP reset link.</div>
+      <div class="l-fg"><label class="l-lbl">Email</label><div class="l-wrap"><i class="fas fa-envelope l-ic"></i><input class="l-inp" type="email" placeholder="amit@tubalaw.com"></div></div>
+      <button class="l-btn" onclick="showV('v-otp')"><i class="fas fa-paper-plane"></i> Send OTP</button>
+    </div>
+    <div id="v-otp" style="display:none">
+      <button onclick="showV('v-forgot')" style="background:none;border:none;cursor:pointer;color:var(--g1);font-size:12.5px;font-weight:700;margin-bottom:18px;padding:0"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="l-h">Enter OTP</div><div class="l-s">6-digit OTP sent to <strong>amit@tubalaw.com</strong>. Valid 10 minutes.</div>
+      <div class="otp-inputs" id="otpCont"></div>
+      <button class="l-btn" onclick="doLogin()"><i class="fas fa-check-circle"></i> Verify & Sign In</button>
+      <p style="text-align:center;margin-top:12px;font-size:12px;color:var(--txt3)">Didn't receive? <a href="#" class="l-link" onclick="return false">Resend OTP</a></p>
+    </div>
+    <div class="l-footer">AES-256 Encrypted · ISO 27001 · DPDP Act Ready<br><a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Support</a></div>
+  </div>
+  <div class="l-right">
+    <div style="position:relative;z-index:1;max-width:440px">
+      <div style="text-align:center"><div class="lr-tag"><i class="fas fa-gavel" style="color:var(--acc-mid);font-size:12px"></i><span>India's Smart Court OS Platform</span></div></div>
+      <div class="lr-h2">One Platform for Every Matter, Every Court, Every Hearing.</div>
+      <div class="lr-p">TUBA Smart Court unifies your entire legal practice — Supreme Court to District Tribunals — into one intelligent workspace for Indian advocates.</div>
+      <div class="lr-features">
+        <div class="lr-fc"><i class="fas fa-gavel"></i><div class="fc-t">Unified Court Tracking</div><div class="fc-s">SC · HC · NCLT · ITAT · RERA · 20+ Forums</div></div>
+        <div class="lr-fc"><i class="fas fa-robot"></i><div class="fc-t">AI Legal Assistant</div><div class="fc-s">Matter summaries, research & drafting</div></div>
+        <div class="lr-fc"><i class="fas fa-calendar-check"></i><div class="fc-t">Smart Cause Lists</div><div class="fc-s">Auto-fetched daily with WhatsApp alerts</div></div>
+        <div class="lr-fc"><i class="fas fa-shield-alt"></i><div class="fc-t">Bank-grade Security</div><div class="fc-s">MFA · AES-256 · Audit Trail · DPDP Ready</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ========== SIDEBAR ========== -->
+<aside class="sb">
+  <div class="sb-logo"><div class="sb-logo-icon">T</div><div><div class="sb-logo-name">TUBA Smart Court</div><div class="sb-logo-sub">CourtOS Platform</div></div></div>
+  <div class="sb-sec"><div class="sb-sec-lbl">Main</div><ul class="nav">
+    <li><a class="nav-a active" onclick="showPage('dashboard')"><span class="nav-icon"><i class="fas fa-th-large"></i></span>Dashboard</a></li>
+    <li><a class="nav-a" onclick="showPage('diary')"><span class="nav-icon"><i class="fas fa-calendar-alt"></i></span>Advocate Diary</a></li>
+    <li><a class="nav-a" onclick="showPage('causelist')"><span class="nav-icon"><i class="fas fa-gavel"></i></span>Cause List<span class="nav-badge">3</span></a></li>
+  </ul></div>
+  <div class="sb-sec"><div class="sb-sec-lbl">Practice</div><ul class="nav">
+    <li><a class="nav-a" onclick="showPage('clients')"><span class="nav-icon"><i class="fas fa-users"></i></span>Clients</a></li>
+    <li><a class="nav-a" onclick="showPage('matters')"><span class="nav-icon"><i class="fas fa-briefcase"></i></span>Matters</a></li>
+    <li><a class="nav-a" onclick="showPage('tracker')"><span class="nav-icon"><i class="fas fa-search"></i></span>Court Tracker</a></li>
+    <li><a class="nav-a" onclick="showPage('tasks')"><span class="nav-icon"><i class="fas fa-tasks"></i></span>Tasks & Workflow</a></li>
+    <li><a class="nav-a" onclick="showPage('filings')"><span class="nav-icon"><i class="fas fa-file-alt"></i></span>Filings</a></li>
+  </ul></div>
+  <div class="sb-sec"><div class="sb-sec-lbl">Knowledge</div><ul class="nav">
+    <li><a class="nav-a" onclick="showPage('documents')"><span class="nav-icon"><i class="fas fa-folder-open"></i></span>Documents</a></li>
+    <li><a class="nav-a" onclick="showPage('knowledge')"><span class="nav-icon"><i class="fas fa-book"></i></span>Knowledge Base</a></li>
+    <li><a class="nav-a" onclick="showPage('ai')"><span class="nav-icon"><i class="fas fa-robot"></i></span>AI Assistant</a></li>
+  </ul></div>
+  <div class="sb-sec"><div class="sb-sec-lbl">Finance</div><ul class="nav">
+    <li><a class="nav-a" onclick="showPage('billing')"><span class="nav-icon"><i class="fas fa-rupee-sign"></i></span>Billing</a></li>
+    <li><a class="nav-a" onclick="showPage('reports')"><span class="nav-icon"><i class="fas fa-chart-bar"></i></span>Reports</a></li>
+  </ul></div>
+  <div class="sb-sec"><div class="sb-sec-lbl">Admin</div><ul class="nav">
+    <li><a class="nav-a" onclick="showPage('usermgmt')"><span class="nav-icon"><i class="fas fa-users-cog"></i></span>User Management</a></li>
+    <li><a class="nav-a" onclick="showPage('masters')"><span class="nav-icon"><i class="fas fa-sliders-h"></i></span>Masters</a></li>
+    <li><a class="nav-a" onclick="showPage('settings')"><span class="nav-icon"><i class="fas fa-cog"></i></span>Settings</a></li>
+  </ul></div>
+  <div class="sb-user"><div class="sb-user-card" onclick="showPage('settings')">
+    <div class="sb-av" id="sb-av">AS</div>
+    <div><div class="sb-uname" id="sb-uname">Adv. Amit Sharma</div><div class="sb-urole">Admin · Firm Owner</div></div>
+    <i class="fas fa-ellipsis-v" style="color:rgba(255,255,255,.25);margin-left:auto;font-size:11px"></i>
+  </div></div>
+</aside>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+<header class="topbar">
+  <div class="topbar-title" id="topbar-title"><div class="page-icon"><i class="fas fa-th-large"></i></div>Dashboard</div>
+  <div class="topbar-acts">
+    <div class="search-box"><i class="fas fa-search"></i><input type="text" placeholder="Search matters, clients, cases…" oninput="globalSearch(this.value)"></div>
+    <button class="icon-btn" onclick="openModal('m-notif')" title="Notifications"><i class="fas fa-bell"></i></button>
+    <button class="theme-tog" id="themeTog" onclick="toggleTheme()"></button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addmatter')"><i class="fas fa-plus"></i> New Matter</button>
+  </div>
+</header>
+<main class="content" id="content-area">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="alert alert-r mb16"><i class="fas fa-exclamation-triangle"></i><strong>3 urgent hearings today</strong> — SC Bench 4 at 10:30 AM · NCLT Mumbai at 2:00 PM · Delhi HC at 3:15 PM<button class="btn btn-xs" onclick="showPage('causelist')" style="margin-left:auto;background:var(--red);color:#fff;border:none">View All</button></div>
+  <div class="qa-grid">
+    <div class="qa-btn" onclick="openModal('m-addmatter')"><div class="qa-icon" style="background:#dcfce7;color:var(--g1)"><i class="fas fa-briefcase"></i></div><span class="qa-label">New Matter</span></div>
+    <div class="qa-btn" onclick="showPage('tracker')"><div class="qa-icon" style="background:#dbeafe;color:var(--blue)"><i class="fas fa-search"></i></div><span class="qa-label">Track Case</span></div>
+    <div class="qa-btn" onclick="openModal('m-addclient')"><div class="qa-icon" style="background:#fef3c7;color:var(--acc)"><i class="fas fa-user-plus"></i></div><span class="qa-label">Add Client</span></div>
+    <div class="qa-btn" onclick="openModal('m-addtask')"><div class="qa-icon" style="background:#ede9fe;color:var(--purple)"><i class="fas fa-tasks"></i></div><span class="qa-label">Add Task</span></div>
+    <div class="qa-btn" onclick="openModal('m-addfiling')"><div class="qa-icon" style="background:#fce7f3;color:#be185d"><i class="fas fa-file-upload"></i></div><span class="qa-label">New Filing</span></div>
+    <div class="qa-btn" onclick="showPage('ai')"><div class="qa-icon" style="background:#ede9fe;color:var(--purple)"><i class="fas fa-robot"></i></div><span class="qa-label">Ask AI</span></div>
+    <div class="qa-btn" onclick="openModal('m-invoice')"><div class="qa-icon" style="background:#dcfce7;color:var(--g1)"><i class="fas fa-file-invoice"></i></div><span class="qa-label">Invoice</span></div>
+    <div class="qa-btn" onclick="openModal('m-upload')"><div class="qa-icon" style="background:#dbeafe;color:var(--blue)"><i class="fas fa-cloud-upload-alt"></i></div><span class="qa-label">Upload</span></div>
+  </div>
+  <div class="divider-label"><i class="fas fa-chart-pie" style="color:var(--g1)"></i>Overview</div>
+  <div class="stats-grid">
+    <div class="sc g" onclick="showPage('matters')"><i class="fas fa-briefcase sc-icon"></i><div class="sc-lbl">Active Matters</div><div class="sc-val" id="d-active">147</div><div class="sc-meta up"><i class="fas fa-arrow-up"></i>+8 this month</div></div>
+    <div class="sc g" onclick="showPage('matters')"><i class="fas fa-check-circle sc-icon"></i><div class="sc-lbl">Closed This Year</div><div class="sc-val">63</div><div class="sc-meta up"><i class="fas fa-arrow-up"></i>+12 vs last yr</div></div>
+    <div class="sc r" onclick="showPage('causelist')"><i class="fas fa-gavel sc-icon"></i><div class="sc-lbl">Hearings Today</div><div class="sc-val">11</div><div class="sc-meta dn"><i class="fas fa-exclamation-circle"></i>3 urgent</div></div>
+    <div class="sc a" onclick="showPage('matters')"><i class="fas fa-calendar-week sc-icon"></i><div class="sc-lbl">This Week</div><div class="sc-val">34</div><div class="sc-meta"><i class="fas fa-clock"></i>Next: Mon 10AM</div></div>
+    <div class="sc p" onclick="showPage('filings')"><i class="fas fa-file-alt sc-icon"></i><div class="sc-lbl">Pending Filings</div><div class="sc-val">9</div><div class="sc-meta dn"><i class="fas fa-exclamation"></i>2 due today</div></div>
+    <div class="sc t" onclick="showPage('tasks')"><i class="fas fa-tasks sc-icon"></i><div class="sc-lbl">Open Tasks</div><div class="sc-val" id="d-tasks">28</div><div class="sc-meta dn"><i class="fas fa-fire"></i>5 overdue</div></div>
+  </div>
+  <div class="g2 mb16">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-gavel" style="color:var(--g1)"></i><span class="card-title">Today's Cause List</span><span class="badge b-r">17 Jun 2026</span><button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="showPage('causelist')">View All</button></div>
+      <div id="dash-cause"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-stream" style="color:var(--acc)"></i><span class="card-title">Legal Timeline</span></div>
+      <div class="card-body" style="max-height:300px;overflow-y:auto"><div class="tl" id="dash-tl"></div></div>
+    </div>
+  </div>
+  <div class="g2 mb16">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-tasks" style="color:var(--g1)"></i><span class="card-title">Pending Tasks</span><span class="badge b-a">5 Overdue</span><button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="showPage('tasks')">All Tasks</button></div>
+      <div id="dash-tasks" style="padding:0 4px"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-landmark" style="color:var(--acc)"></i><span class="card-title">Cases by Court</span></div>
+      <div class="card-body" id="dash-courts"></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-users" style="color:var(--g1)"></i><span class="card-title">Team Performance</span></div>
+      <div class="card-body" id="dash-team"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-chart-bar" style="color:var(--g1)"></i><span class="card-title">Revenue — Jun 2026</span></div>
+      <div class="card-body">
+        <div class="g2 mb12" style="gap:10px">
+          <div style="background:var(--red-soft);border-radius:8px;padding:12px;border:1px solid rgba(220,38,38,.12)"><div class="sc-lbl" style="color:var(--red)">Overdue</div><div class="sc-val" style="font-size:22px;color:var(--red)">₹1.8L</div></div>
+          <div style="background:var(--g-soft);border-radius:8px;padding:12px;border:1px solid rgba(22,163,74,.12)"><div class="sc-lbl" style="color:var(--g1)">Collected</div><div class="sc-val" style="font-size:22px;color:var(--g1)">₹2.4L</div></div>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-col"><div class="bar-body" style="height:38px;background:var(--g2);opacity:.7"></div><div class="bar-lbl">M</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:55px;background:var(--g2)"></div><div class="bar-lbl">T</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:22px;background:var(--g2);opacity:.7"></div><div class="bar-lbl">W</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:48px;background:var(--g2)"></div><div class="bar-lbl">T</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:65px;background:var(--acc)"></div><div class="bar-lbl">F</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:10px;background:var(--g2);opacity:.4"></div><div class="bar-lbl">S</div></div>
+          <div class="bar-col"><div class="bar-body" style="height:5px;background:var(--g2);opacity:.3"></div><div class="bar-lbl">S</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CAUSE LIST ===== -->
+<div class="page" id="page-causelist">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="filterCause('all',this)">All</div>
+      <div class="pill" onclick="filterCause('SC',this)">Supreme Court</div>
+      <div class="pill" onclick="filterCause('HC',this)">High Courts</div>
+      <div class="pill" onclick="filterCause('Tribunal',this)">Tribunals</div>
+      <div class="pill" onclick="filterCause('Urgent',this)">Urgent</div>
+    </div>
+    <div class="fxc gap8"><button class="btn btn-outline btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button><button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> Export</button></div>
+  </div>
+  <div class="card"><div class="card-hd"><i class="fas fa-gavel" style="color:var(--g1)"></i><span class="card-title">Cause List — 17 June 2026</span><span class="badge b-g" id="cause-count">10 Hearings</span></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Sr.</th><th>Case Title</th><th>Case No.</th><th>Court / Bench</th><th>Time</th><th>Stage</th><th>Advocate</th><th>Status</th></tr></thead><tbody id="cause-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== MATTERS ===== -->
+<div class="page" id="page-matters">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="filterMatters('all',this)">All</div>
+      <div class="pill" onclick="filterMatters('Litigation',this)">Litigation</div>
+      <div class="pill" onclick="filterMatters('Arbitration',this)">Arbitration</div>
+      <div class="pill" onclick="filterMatters('Advisory',this)">Advisory</div>
+      <div class="pill" onclick="filterMatters('IBC',this)">IBC</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addmatter')"><i class="fas fa-plus"></i> New Matter</button>
+  </div>
+  <div class="card"><div class="card-hd"><i class="fas fa-briefcase" style="color:var(--g1)"></i><span class="card-title">All Matters</span><span class="badge b-g" id="matters-count">10</span><div class="search-box" style="margin-left:auto;width:180px"><i class="fas fa-search"></i><input type="text" placeholder="Search…" oninput="searchMatters(this.value)"></div></div>
+  <div class="tbl-wrap"><table><thead><tr><th>No.</th><th>Matter Title</th><th>Client</th><th>Court</th><th>Type</th><th>Next Hearing</th><th>Advocate</th><th>Status</th><th></th></tr></thead><tbody id="matters-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== CLIENTS ===== -->
+<div class="page" id="page-clients">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="filterClients('all',this)">All</div>
+      <div class="pill" onclick="filterClients('Individual',this)">Individual</div>
+      <div class="pill" onclick="filterClients('Corporate',this)">Corporate</div>
+      <div class="pill" onclick="filterClients('Government',this)">Government</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addclient')"><i class="fas fa-user-plus"></i> Add Client</button>
+  </div>
+  <div class="card"><div class="card-hd"><i class="fas fa-users" style="color:var(--g1)"></i><span class="card-title">Client Directory</span><span class="badge b-g" id="clients-count">10</span><div class="search-box" style="margin-left:auto;width:180px"><i class="fas fa-search"></i><input type="text" placeholder="Search…" oninput="searchClients(this.value)"></div></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Mobile</th><th>PAN</th><th>Matters</th><th>Status</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== TASKS ===== -->
+<div class="page" id="page-tasks">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="switchTaskView('kanban',this)">Kanban</div>
+      <div class="pill" onclick="switchTaskView('list',this)">List View</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addtask')"><i class="fas fa-plus"></i> New Task</button>
+  </div>
+  <div id="tv-kanban"><div class="kanban" id="kanban-board"></div></div>
+  <div id="tv-list" style="display:none"><div class="card"><div class="card-hd"><i class="fas fa-tasks" style="color:var(--g1)"></i><span class="card-title">All Tasks</span></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Done</th><th>Task</th><th>Matter</th><th>Priority</th><th>Due</th><th>Assigned</th><th>Status</th></tr></thead><tbody id="tasks-list-tbody"></tbody></table></div></div></div>
+</div>
+
+<!-- ===== FILINGS ===== -->
+<div class="page" id="page-filings">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="filterFilings('all',this)">All</div>
+      <div class="pill" onclick="filterFilings('Draft',this)">Draft</div>
+      <div class="pill" onclick="filterFilings('Approved',this)">Approved</div>
+      <div class="pill" onclick="filterFilings('Filed',this)">Filed</div>
+      <div class="pill" onclick="filterFilings('Defects',this)">Defects</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addfiling')"><i class="fas fa-plus"></i> New Filing</button>
+  </div>
+  <div class="card"><div class="card-hd"><i class="fas fa-file-alt" style="color:var(--g1)"></i><span class="card-title">Filing Tracker</span><span class="badge b-a" id="filings-count">10</span></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Filing No.</th><th>Document</th><th>Matter</th><th>Court</th><th>Due Date</th><th>Stage</th><th>Status</th><th></th></tr></thead><tbody id="filings-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== TRACKER ===== -->
+<div class="page" id="page-tracker">
+  <div class="card mb16"><div class="card-hd"><i class="fas fa-search" style="color:var(--g1)"></i><span class="card-title">Court Tracking Engine</span><span class="badge b-g">Live Sync</span></div>
+  <div class="card-body">
+    <div class="f-row">
+      <div class="f-group"><label class="f-label">Select Court</label><select class="f-ctrl" id="tracker-court"></select></div>
+      <div class="f-group"><label class="f-label">Search By</label><select class="f-ctrl"><option>Case Number</option><option>CNR Number</option><option>Party Name</option></select></div>
+    </div>
+    <div class="f-group mb16"><label class="f-label">Case / CNR Number</label>
+      <div class="fxc gap8"><input class="f-ctrl" type="text" id="tracker-input" placeholder="e.g. WP(C) 1247/2024"><button class="btn btn-primary" onclick="doTrack()"><i class="fas fa-search"></i> Track</button></div>
+    </div>
+  </div></div>
+  <div id="tracker-result" style="display:none"></div>
+</div>
+
+<!-- ===== DOCUMENTS ===== -->
+<div class="page" id="page-documents">
+  <div class="fxb mb16"><div class="search-box" style="width:280px"><i class="fas fa-search"></i><input type="text" placeholder="Search documents, OCR content…"></div>
+  <div class="fxc gap8"><button class="btn btn-outline btn-sm"><i class="fas fa-folder-plus"></i> New Folder</button><button class="btn btn-primary btn-sm" onclick="openModal('m-upload')"><i class="fas fa-cloud-upload-alt"></i> Upload</button></div></div>
+  <div class="g2">
+    <div class="card"><div class="card-hd"><i class="fas fa-folder" style="color:var(--acc)"></i><span class="card-title">Matter Folders</span></div><div id="doc-folders"></div></div>
+    <div class="card"><div class="card-hd"><i class="fas fa-clock" style="color:var(--txt3)"></i><span class="card-title">Recent Documents</span></div><div id="doc-recent"></div></div>
+  </div>
+</div>
+
+<!-- ===== KNOWLEDGE ===== -->
+<div class="page" id="page-knowledge">
+  <div class="fxb mb16"><div class="search-box" style="width:300px"><i class="fas fa-search"></i><input type="text" placeholder="Search judgments, templates…"></div>
+  <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add Resource</button></div>
+  <div class="card"><div class="card-hd"><i class="fas fa-book" style="color:var(--g1)"></i><span class="card-title">Legal Knowledge Repository</span></div>
+  <div style="padding:0 18px"><div class="tab-row" id="kb-tabs">
+    <button class="tab-btn active" onclick="switchKBTab(this,'kb-j')">Judgments</button>
+    <button class="tab-btn" onclick="switchKBTab(this,'kb-t')">Templates</button>
+    <button class="tab-btn" onclick="switchKBTab(this,'kb-a')">Articles</button>
+  </div></div>
+  <div id="kb-j"></div><div id="kb-t" style="display:none"></div><div id="kb-a" style="display:none"></div></div>
+</div>
+
+<!-- ===== AI ===== -->
+<div class="page" id="page-ai">
+  <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - var(--th) - 36px)">
+    <div class="card-hd"><i class="fas fa-robot" style="color:var(--g1)"></i><span class="card-title">TUBA Legal AI Assistant</span><span class="badge b-g"><i class="fas fa-circle" style="font-size:7px"></i> Online</span></div>
+    <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px" id="chat-msgs"></div>
+    <div class="fxc gap8" style="padding:12px 14px;border-top:1px solid var(--bdr)">
+      <input class="f-ctrl" type="text" id="chat-input" placeholder='Ask anything — "Hearings today?" or "Summarize Sharma v. UoI"' onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="btn btn-primary" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BILLING ===== -->
+<div class="page" id="page-billing">
+  <div class="fxb mb16">
+    <div class="pills">
+      <div class="pill active" onclick="filterBilling('all',this)">All</div>
+      <div class="pill" onclick="filterBilling('Unpaid',this)">Unpaid</div>
+      <div class="pill" onclick="filterBilling('Paid',this)">Paid</div>
+      <div class="pill" onclick="filterBilling('Overdue',this)">Overdue</div>
+    </div>
+    <div class="fxc gap8"><button class="btn btn-outline btn-sm" onclick="openModal('m-invoice')"><i class="fas fa-file-invoice"></i> Generate Invoice</button><button class="btn btn-primary btn-sm" onclick="openModal('m-addbilling')"><i class="fas fa-plus"></i> Add Entry</button></div>
+  </div>
+  <div class="stats-grid mb16" style="grid-template-columns:repeat(4,1fr)">
+    <div class="sc g"><i class="fas fa-rupee-sign sc-icon"></i><div class="sc-lbl">Billed This Month</div><div class="sc-val">₹4.2L</div><div class="sc-meta up">+18%</div></div>
+    <div class="sc r"><i class="fas fa-exclamation-circle sc-icon"></i><div class="sc-lbl">Outstanding</div><div class="sc-val">₹1.8L</div><div class="sc-meta dn">3 invoices</div></div>
+    <div class="sc g"><i class="fas fa-check-circle sc-icon"></i><div class="sc-lbl">Received</div><div class="sc-val">₹2.4L</div><div class="sc-meta up">+12%</div></div>
+    <div class="sc a"><i class="fas fa-wallet sc-icon"></i><div class="sc-lbl">Expenses</div><div class="sc-val">₹32K</div><div class="sc-meta">Court fees</div></div>
+  </div>
+  <div class="card"><div class="card-hd"><i class="fas fa-file-invoice" style="color:var(--g1)"></i><span class="card-title">Invoice Register</span><span class="badge b-g" id="billing-count">10</span></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Invoice No.</th><th>Client</th><th>Description</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody id="billing-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== REPORTS ===== -->
+<div class="page" id="page-reports">
+  <div class="stats-grid mb16" style="grid-template-columns:repeat(4,1fr)">
+    <div class="sc g"><i class="fas fa-briefcase sc-icon"></i><div class="sc-lbl">Total Matters FY</div><div class="sc-val">210</div></div>
+    <div class="sc g"><i class="fas fa-trophy sc-icon"></i><div class="sc-lbl">Win Rate</div><div class="sc-val">74%</div><div class="sc-meta up">+6%</div></div>
+    <div class="sc a"><i class="fas fa-rupee-sign sc-icon"></i><div class="sc-lbl">Revenue FY</div><div class="sc-val">₹48L</div><div class="sc-meta up">+22%</div></div>
+    <div class="sc g"><i class="fas fa-users sc-icon"></i><div class="sc-lbl">Clients</div><div class="sc-val">87</div><div class="sc-meta up">+14 new</div></div>
+  </div>
+  <div class="g2 mb16">
+    <div class="card"><div class="card-hd"><i class="fas fa-chart-line" style="color:var(--acc)"></i><span class="card-title">Monthly Hearings 2026</span></div>
+      <div class="card-body"><div class="bar-chart" style="height:90px">
+        <div class="bar-col"><div class="bar-body" style="height:45px;background:var(--g2);opacity:.7"></div><div class="bar-lbl">Jan</div></div>
+        <div class="bar-col"><div class="bar-body" style="height:62px;background:var(--g2)"></div><div class="bar-lbl">Feb</div></div>
+        <div class="bar-col"><div class="bar-body" style="height:40px;background:var(--g2);opacity:.8"></div><div class="bar-lbl">Mar</div></div>
+        <div class="bar-col"><div class="bar-body" style="height:78px;background:var(--g2)"></div><div class="bar-lbl">Apr</div></div>
+        <div class="bar-col"><div class="bar-body" style="height:68px;background:var(--g2)"></div><div class="bar-lbl">May</div></div>
+        <div class="bar-col"><div class="bar-body" style="height:88px;background:var(--acc)"></div><div class="bar-lbl">Jun</div></div>
+      </div></div>
+    </div>
+    <div class="card"><div class="card-hd"><i class="fas fa-download" style="color:var(--g1)"></i><span class="card-title">Export Reports</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+        <div class="fxb" style="padding:9px 12px;background:var(--bgs);border-radius:8px"><span style="font-size:12.5px;font-weight:600">Court-wise Report</span><div class="fxc gap5"><button class="btn btn-outline btn-xs" onclick="toast('Downloading PDF…','g')">PDF</button><button class="btn btn-outline btn-xs" onclick="toast('Downloading Excel…','g')">Excel</button></div></div>
+        <div class="fxb" style="padding:9px 12px;background:var(--bgs);border-radius:8px"><span style="font-size:12.5px;font-weight:600">Advocate Workload</span><div class="fxc gap5"><button class="btn btn-outline btn-xs" onclick="toast('Downloading PDF…','g')">PDF</button><button class="btn btn-outline btn-xs" onclick="toast('Downloading Excel…','g')">Excel</button></div></div>
+        <div class="fxb" style="padding:9px 12px;background:var(--bgs);border-radius:8px"><span style="font-size:12.5px;font-weight:600">Revenue Analysis FY</span><div class="fxc gap5"><button class="btn btn-outline btn-xs" onclick="toast('Downloading PDF…','g')">PDF</button><button class="btn btn-outline btn-xs" onclick="toast('Downloading Excel…','g')">Excel</button></div></div>
+        <div class="fxb" style="padding:9px 12px;background:var(--bgs);border-radius:8px"><span style="font-size:12.5px;font-weight:600">Matter Ageing Report</span><div class="fxc gap5"><button class="btn btn-outline btn-xs" onclick="toast('Downloading PDF…','g')">PDF</button><button class="btn btn-outline btn-xs" onclick="toast('Downloading Excel…','g')">Excel</button></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DIARY ===== -->
+<div class="page" id="page-diary">
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-calendar-alt" style="color:var(--g1)"></i><span class="card-title">June 2026</span>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px;margin-left:auto"><i class="fas fa-chevron-left"></i></button>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div class="card-body"><div class="cal-grid mb12" id="cal-hdrs"></div><div class="cal-grid" id="cal-days"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-list-ul" style="color:var(--acc)"></i><span class="card-title">Today — 17 June 2026</span><button class="btn btn-primary btn-xs" style="margin-left:auto"><i class="fas fa-plus"></i> Add Entry</button></div>
+      <div class="card-body" style="max-height:400px;overflow-y:auto"><div class="tl" id="diary-tl"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== USER MANAGEMENT ===== -->
+<div class="page" id="page-usermgmt">
+  <div class="stats-grid mb16" style="grid-template-columns:repeat(5,1fr)">
+    <div class="sc g"><i class="fas fa-users sc-icon"></i><div class="sc-lbl">Total Users</div><div class="sc-val" id="um-total">10</div></div>
+    <div class="sc g"><i class="fas fa-user-check sc-icon"></i><div class="sc-lbl">Online Now</div><div class="sc-val">5</div><div class="sc-meta up">Active sessions</div></div>
+    <div class="sc a"><i class="fas fa-user-clock sc-icon"></i><div class="sc-lbl">Pending Invites</div><div class="sc-val">3</div></div>
+    <div class="sc r"><i class="fas fa-user-slash sc-icon"></i><div class="sc-lbl">Inactive</div><div class="sc-val">2</div></div>
+    <div class="sc t"><i class="fas fa-shield-alt sc-icon"></i><div class="sc-lbl">MFA Enabled</div><div class="sc-val">8</div><div class="sc-meta">80%</div></div>
+  </div>
+  <div class="card mb16">
+    <div class="card-hd"><i class="fas fa-users-cog" style="color:var(--g1)"></i><span class="card-title">System Users</span>
+      <div class="pills" style="margin-left:8px">
+        <div class="pill active" onclick="filterUsers('all',this)">All</div>
+        <div class="pill" onclick="filterUsers('admin',this)">Admin</div>
+        <div class="pill" onclick="filterUsers('senior',this)">Sr. Adv</div>
+        <div class="pill" onclick="filterUsers('advocate',this)">Advocate</div>
+        <div class="pill" onclick="filterUsers('clerk',this)">Clerk</div>
+      </div>
+      <div class="search-box" style="margin-left:auto;width:170px"><i class="fas fa-search"></i><input type="text" placeholder="Search users…" oninput="searchUsers(this.value)"></div>
+      <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openModal('m-invite')"><i class="fas fa-user-plus"></i> Invite</button>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th><input type="checkbox" onclick="checkAll(this,'ucb')" style="accent-color:var(--g2)"></th><th>User</th><th>Role</th><th>Department</th><th>Matters</th><th>Last Login</th><th>MFA</th><th>Status</th><th>Actions</th></tr></thead><tbody id="users-tbody"></tbody></table></div>
+  </div>
+  <div class="g2 mb16">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-key" style="color:var(--acc)"></i><span class="card-title">Role Permissions Matrix</span>
+        <select class="f-ctrl" style="width:auto;font-size:12px;padding:4px 26px 4px 8px;margin-left:auto" onchange="renderPermMatrix(this.value)">
+          <option value="admin">Admin</option><option value="senior">Sr. Advocate</option><option value="advocate">Advocate</option><option value="clerk">Clerk</option><option value="readonly">Read-only</option>
+        </select>
+      </div>
+      <div class="card-body"><div id="perm-matrix"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-history" style="color:var(--txt3)"></i><span class="card-title">Audit Log</span></div>
+      <div style="padding:0 14px"><div id="audit-log"></div></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-desktop" style="color:var(--blue)"></i><span class="card-title">Active Sessions</span><button class="btn btn-danger btn-xs" style="margin-left:auto" onclick="if(confirm('Kill all sessions?'))toast('All sessions terminated','r')">Kill All</button></div>
+      <div id="active-sessions"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-network-wired" style="color:var(--g1)"></i><span class="card-title">IP Whitelist & Security</span><button class="btn btn-primary btn-xs" style="margin-left:auto" onclick="toast('IP panel opened','g')">+ Add IP</button></div>
+      <div class="card-body">
+        <div id="ip-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+        <div class="divider-label">Login Security</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="fxb"><span style="font-size:12.5px">Force MFA for all users</span><span class="badge b-g">Enabled</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Max failed attempts</span><select class="f-ctrl" style="width:auto;padding:3px 25px 3px 8px;font-size:12px"><option>3</option><option selected>5</option><option>10</option></select></div>
+          <div class="fxb"><span style="font-size:12.5px">Session timeout</span><select class="f-ctrl" style="width:auto;padding:3px 25px 3px 8px;font-size:12px"><option>30 min</option><option selected>1 hr</option><option>4 hrs</option></select></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MASTERS ===== -->
+<div class="page" id="page-masters">
+  <div class="alert alert-b mb16"><i class="fas fa-info-circle"></i> Masters control all dropdown options across the platform. Add, edit or reorder values here and all forms update instantly.</div>
+  <div class="master-grid" id="masters-grid"></div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="page" id="page-settings">
+  <div class="g2">
+    <div>
+      <div class="card mb16"><div class="card-hd"><i class="fas fa-user-cog" style="color:var(--g1)"></i><span class="card-title">Profile Settings</span></div>
+        <div class="card-body"><div class="f-row">
+          <div class="f-group"><label class="f-label">Full Name</label><input class="f-ctrl" value="Adv. Amit Kumar Sharma"></div>
+          <div class="f-group"><label class="f-label">Bar Council No.</label><input class="f-ctrl" value="D/814/1998"></div>
+          <div class="f-group"><label class="f-label">Mobile</label><input class="f-ctrl" value="+91 98100 XXXXX"></div>
+          <div class="f-group"><label class="f-label">Email</label><input class="f-ctrl" value="amit@tubalaw.com"></div>
+        </div><button class="btn btn-primary btn-sm" onclick="toast('Profile saved!','g')"><i class="fas fa-save"></i> Save Profile</button></div>
+      </div>
+      <div class="card"><div class="card-hd"><i class="fas fa-palette" style="color:var(--acc)"></i><span class="card-title">Appearance</span></div>
+        <div class="card-body"><div class="f-label mb12">Theme</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <div style="padding:10px;border-radius:8px;border:2px solid var(--g1);cursor:pointer;text-align:center;font-size:11px;font-weight:700;background:var(--g-soft);color:var(--g1)">Court Green</div>
+            <div style="padding:10px;border-radius:8px;border:1px solid var(--bdr);cursor:pointer;text-align:center;font-size:11px;color:var(--txt2)" onclick="toast('Theme applied','g')">Navy Blue</div>
+            <div style="padding:10px;border-radius:8px;border:1px solid var(--bdr);cursor:pointer;text-align:center;font-size:11px;color:var(--txt2)" onclick="toast('Theme applied','g')">Corp Grey</div>
+            <div style="padding:10px;border-radius:8px;border:1px solid var(--bdr);cursor:pointer;text-align:center;font-size:11px;color:var(--txt2)" onclick="toggleTheme()">Dark Mode</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card mb16"><div class="card-hd"><i class="fas fa-shield-alt" style="color:var(--g1)"></i><span class="card-title">Security</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:11px">
+          <div class="fxb"><span style="font-size:12.5px">Multi-Factor Authentication</span><span class="badge b-g">Enabled</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Biometric Login</span><span class="badge b-gr">Disabled</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Data Encryption</span><span class="badge b-g">AES-256</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Audit Trail</span><span class="badge b-g">Active</span></div>
+          <button class="btn btn-outline btn-sm" onclick="toast('Reset email sent','g')"><i class="fas fa-key"></i> Change Password</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-hd"><i class="fas fa-bell" style="color:var(--red)"></i><span class="card-title">Notifications</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:11px">
+          <div class="fxb"><span style="font-size:12.5px">Hearing Reminders (WhatsApp)</span><span class="badge b-g">On · 7 AM</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Filing Due Alerts (Email)</span><span class="badge b-g">On</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Task Overdue (Browser)</span><span class="badge b-g">On</span></div>
+          <div class="fxb"><span style="font-size:12.5px">Daily Cause List (WhatsApp)</span><span class="badge b-g">7:00 AM</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- ========== MODALS ========== -->
+<!-- NOTIFICATIONS -->
+<div class="modal-bd" id="m-notif"><div class="modal" style="width:400px">
+  <div class="modal-hd"><i class="fas fa-bell" style="color:var(--red)"></i><h3>Notifications</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-notif')"><i class="fas fa-times"></i></button></div>
+  <div id="notif-list"></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-notif')">Mark All Read</button></div>
+</div></div>
+
+<!-- ADD MATTER -->
+<div class="modal-bd" id="m-addmatter"><div class="modal modal-lg">
+  <div class="modal-hd"><i class="fas fa-briefcase" style="color:var(--g1)"></i><h3>Register New Matter</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-addmatter')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Matter Type</label><select class="f-ctrl" id="mat-type"></select></div>
+    <div class="f-group"><label class="f-label">Client</label><select class="f-ctrl" id="mat-client"></select></div>
+    <div class="f-group f-full"><label class="f-label">Matter Title</label><input class="f-ctrl" type="text" id="mat-title" placeholder="Descriptive title"></div>
+    <div class="f-group"><label class="f-label">Court / Forum</label><select class="f-ctrl" id="mat-court"></select></div>
+    <div class="f-group"><label class="f-label">Practice Area</label><select class="f-ctrl" id="mat-area"></select></div>
+    <div class="f-group"><label class="f-label">Assigned Advocate</label><select class="f-ctrl" id="mat-adv"></select></div>
+    <div class="f-group"><label class="f-label">Filing Date</label><input class="f-ctrl" type="date"></div>
+    <div class="f-group"><label class="f-label">Case Number (if known)</label><input class="f-ctrl" type="text" placeholder="e.g. WP(C) 1247/2024"></div>
+    <div class="f-group f-full"><label class="f-label">Opposite Party</label><input class="f-ctrl" type="text" placeholder="Respondent name"></div>
+    <div class="f-group f-full"><label class="f-label">Background / Brief Facts</label><textarea class="f-ctrl" placeholder="Key background and legal issues…"></textarea></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-addmatter')">Cancel</button><button class="btn btn-primary btn-sm" onclick="addMatter()"><i class="fas fa-save"></i> Register Matter</button></div>
+</div></div>
+
+<!-- ADD CLIENT -->
+<div class="modal-bd" id="m-addclient"><div class="modal modal-lg">
+  <div class="modal-hd"><i class="fas fa-user-plus" style="color:var(--g1)"></i><h3>Add New Client</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-addclient')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Client Type</label><select class="f-ctrl" id="cl-type"></select></div>
+    <div class="f-group"><label class="f-label">Client Name</label><input class="f-ctrl" type="text" id="cl-name" placeholder="Full name or company"></div>
+    <div class="f-group"><label class="f-label">Mobile</label><input class="f-ctrl" type="tel" id="cl-mobile" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="f-group"><label class="f-label">Email</label><input class="f-ctrl" type="email" id="cl-email" placeholder="email@domain.com"></div>
+    <div class="f-group"><label class="f-label">PAN Number</label><input class="f-ctrl" type="text" placeholder="XXXXX0000X"></div>
+    <div class="f-group"><label class="f-label">GST Number</label><input class="f-ctrl" type="text" placeholder="22XXXXX0000X1Z5"></div>
+    <div class="f-group f-full"><label class="f-label">Address</label><textarea class="f-ctrl" style="min-height:60px" placeholder="Full address"></textarea></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-addclient')">Cancel</button><button class="btn btn-primary btn-sm" onclick="addClient()"><i class="fas fa-save"></i> Add Client</button></div>
+</div></div>
+
+<!-- ADD TASK -->
+<div class="modal-bd" id="m-addtask"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-tasks" style="color:var(--g1)"></i><h3>New Task</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-addtask')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group f-full"><label class="f-label">Task Title</label><input class="f-ctrl" type="text" id="tk-title" placeholder="e.g. Draft Written Submissions"></div>
+    <div class="f-group"><label class="f-label">Matter</label><select class="f-ctrl" id="tk-matter"></select></div>
+    <div class="f-group"><label class="f-label">Priority</label><select class="f-ctrl" id="tk-priority"><option>Urgent</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+    <div class="f-group"><label class="f-label">Due Date</label><input class="f-ctrl" type="date" id="tk-due"></div>
+    <div class="f-group"><label class="f-label">Assigned To</label><select class="f-ctrl" id="tk-assign"></select></div>
+    <div class="f-group"><label class="f-label">Task Type</label><select class="f-ctrl" id="tk-type"></select></div>
+    <div class="f-group f-full"><label class="f-label">Notes</label><textarea class="f-ctrl" id="tk-notes" placeholder="Additional details…"></textarea></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-addtask')">Cancel</button><button class="btn btn-primary btn-sm" onclick="addTask()"><i class="fas fa-save"></i> Create Task</button></div>
+</div></div>
+
+<!-- ADD FILING -->
+<div class="modal-bd" id="m-addfiling"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-file-alt" style="color:var(--g1)"></i><h3>New Filing</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-addfiling')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Document Type</label><select class="f-ctrl" id="fl-doctype"></select></div>
+    <div class="f-group"><label class="f-label">Matter</label><select class="f-ctrl" id="fl-matter"></select></div>
+    <div class="f-group"><label class="f-label">Court</label><select class="f-ctrl" id="fl-court"></select></div>
+    <div class="f-group"><label class="f-label">Due Date</label><input class="f-ctrl" type="date" id="fl-due"></div>
+    <div class="f-group f-full"><label class="f-label">Description</label><textarea class="f-ctrl" placeholder="Brief description of filing"></textarea></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-addfiling')">Cancel</button><button class="btn btn-primary btn-sm" onclick="addFiling()"><i class="fas fa-save"></i> Create Filing</button></div>
+</div></div>
+
+<!-- INVOICE -->
+<div class="modal-bd" id="m-invoice"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-file-invoice" style="color:var(--g1)"></i><h3>Generate Invoice</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-invoice')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Client</label><select class="f-ctrl" id="inv-client"></select></div>
+    <div class="f-group"><label class="f-label">Matter</label><select class="f-ctrl" id="inv-matter"></select></div>
+    <div class="f-group"><label class="f-label">Fee Type</label><select class="f-ctrl"><option>Appearance Fees</option><option>Retainer</option><option>Drafting Fees</option><option>Filing Charges</option><option>Consultation</option></select></div>
+    <div class="f-group"><label class="f-label">Amount (₹)</label><input class="f-ctrl" type="number" id="inv-amount" placeholder="e.g. 50000"></div>
+    <div class="f-group"><label class="f-label">Invoice Date</label><input class="f-ctrl" type="date" id="inv-date"></div>
+    <div class="f-group"><label class="f-label">Due Date</label><input class="f-ctrl" type="date"></div>
+    <div class="f-group f-full"><label class="f-label">Description</label><textarea class="f-ctrl" placeholder="Services rendered…"></textarea></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-invoice')">Cancel</button><button class="btn btn-primary btn-sm" onclick="addInvoice()"><i class="fas fa-save"></i> Generate Invoice</button></div>
+</div></div>
+
+<!-- UPLOAD DOC -->
+<div class="modal-bd" id="m-upload"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-cloud-upload-alt" style="color:var(--g1)"></i><h3>Upload Document</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-upload')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body">
+    <div style="border:2px dashed var(--bdr2);border-radius:10px;padding:30px;text-align:center;margin-bottom:16px;cursor:pointer" onmouseenter="this.style.borderColor='var(--g2)'" onmouseleave="this.style.borderColor='var(--bdr2)'">
+      <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--g2);display:block;margin-bottom:10px"></i>
+      <div style="font-weight:700;font-size:13px">Drop files here or click to browse</div>
+      <div style="font-size:11.5px;color:var(--txt3);margin-top:4px">PDF, DOCX, XLSX, JPG up to 50MB</div>
+    </div>
+    <div class="f-row">
+      <div class="f-group"><label class="f-label">Matter</label><select class="f-ctrl" id="up-matter"></select></div>
+      <div class="f-group"><label class="f-label">Document Type</label><select class="f-ctrl" id="up-doctype"></select></div>
+    </div>
+  </div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-upload')">Cancel</button><button class="btn btn-primary btn-sm" onclick="toast('Document uploaded!','g');closeModal('m-upload')"><i class="fas fa-upload"></i> Upload</button></div>
+</div></div>
+
+<!-- ADD BILLING ENTRY -->
+<div class="modal-bd" id="m-addbilling"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-rupee-sign" style="color:var(--g1)"></i><h3>Add Billing Entry</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-addbilling')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Client</label><select class="f-ctrl" id="be-client"></select></div>
+    <div class="f-group"><label class="f-label">Entry Type</label><select class="f-ctrl"><option>Expense</option><option>Receipt</option><option>Court Fee</option><option>Travel</option></select></div>
+    <div class="f-group"><label class="f-label">Amount (₹)</label><input class="f-ctrl" type="number" placeholder="Amount"></div>
+    <div class="f-group"><label class="f-label">Date</label><input class="f-ctrl" type="date"></div>
+    <div class="f-group f-full"><label class="f-label">Notes</label><input class="f-ctrl" type="text" placeholder="Description"></div>
+  </div></div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-addbilling')">Cancel</button><button class="btn btn-primary btn-sm" onclick="toast('Entry added','g');closeModal('m-addbilling')"><i class="fas fa-save"></i> Add</button></div>
+</div></div>
+
+<!-- INVITE USER -->
+<div class="modal-bd" id="m-invite"><div class="modal modal-lg">
+  <div class="modal-hd"><i class="fas fa-user-plus" style="color:var(--g1)"></i><h3>Invite New User</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-invite')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body"><div class="f-row">
+    <div class="f-group"><label class="f-label">Full Name</label><input class="f-ctrl" type="text" id="inv-name" placeholder="Adv. Full Name"></div>
+    <div class="f-group"><label class="f-label">Email</label><input class="f-ctrl" type="email" id="inv-email" placeholder="user@tubalaw.com"></div>
+    <div class="f-group"><label class="f-label">Mobile</label><input class="f-ctrl" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="f-group"><label class="f-label">Designation</label><select class="f-ctrl" id="inv-desig"></select></div>
+    <div class="f-group"><label class="f-label">Department</label><select class="f-ctrl" id="inv-dept"></select></div>
+    <div class="f-group"><label class="f-label">Bar Council No.</label><input class="f-ctrl" type="text" placeholder="D/XXX/20XX"></div>
+  </div>
+  <div class="f-label" style="margin-bottom:8px">Assign Role</div>
+  <div class="role-opts" id="invite-role-opts">
+    <div class="role-opt" onclick="selRole(this)"><i class="fas fa-crown" style="color:var(--acc);margin-right:5px"></i>Admin</div>
+    <div class="role-opt active" onclick="selRole(this)"><i class="fas fa-gavel" style="color:var(--g1);margin-right:5px"></i>Sr. Advocate</div>
+    <div class="role-opt" onclick="selRole(this)"><i class="fas fa-briefcase" style="color:var(--g2);margin-right:5px"></i>Advocate</div>
+    <div class="role-opt" onclick="selRole(this)"><i class="fas fa-clipboard" style="color:var(--purple);margin-right:5px"></i>Clerk</div>
+    <div class="role-opt" onclick="selRole(this)"><i class="fas fa-eye" style="color:var(--txt3);margin-right:5px"></i>Read-only</div>
+  </div>
+  <div class="alert alert-b mt16"><i class="fas fa-info-circle"></i> User receives a secure activation link valid 48 hours. MFA required on first login.</div>
+  </div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-invite')">Cancel</button><button class="btn btn-primary btn-sm" onclick="sendInvite()"><i class="fas fa-paper-plane"></i> Send Invite</button></div>
+</div></div>
+
+<!-- EDIT USER -->
+<div class="modal-bd" id="m-edituser"><div class="modal modal-lg">
+  <div class="modal-hd"><i class="fas fa-user-edit" style="color:var(--g1)"></i><h3 id="edit-user-title">Edit User</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-edituser')"><i class="fas fa-times"></i></button></div>
+  <div style="padding:0 20px"><div class="tab-row" id="eu-tabs">
+    <button class="tab-btn active" onclick="switchETab(this,'eu-profile')">Profile</button>
+    <button class="tab-btn" onclick="switchETab(this,'eu-perms')">Permissions</button>
+    <button class="tab-btn" onclick="switchETab(this,'eu-sessions')">Sessions</button>
+    <button class="tab-btn" onclick="switchETab(this,'eu-activity')">Activity</button>
+  </div></div>
+  <div class="modal-body">
+    <div id="eu-profile">
+      <div class="fxc gap12 mb16">
+        <div class="avatar" id="eu-av" style="width:50px;height:50px;font-size:16px;border-radius:10px"></div>
+        <div><div style="font-size:14px;font-weight:800" id="eu-name-d"></div><div style="font-size:12px;color:var(--txt3)" id="eu-role-d"></div></div>
+        <button class="btn btn-outline btn-xs" style="margin-left:auto">Change Photo</button>
+      </div>
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Full Name</label><input class="f-ctrl" id="eu-name"></div>
+        <div class="f-group"><label class="f-label">Email</label><input class="f-ctrl" id="eu-email"></div>
+        <div class="f-group"><label class="f-label">Mobile</label><input class="f-ctrl" id="eu-mobile"></div>
+        <div class="f-group"><label class="f-label">Role</label><select class="f-ctrl" id="eu-role"><option value="admin">Admin</option><option value="senior">Sr. Advocate</option><option value="advocate">Advocate</option><option value="clerk">Clerk</option><option value="readonly">Read-only</option></select></div>
+        <div class="f-group"><label class="f-label">Status</label><select class="f-ctrl" id="eu-status"><option>Active</option><option>Suspended</option><option>Deactivated</option></select></div>
+        <div class="f-group"><label class="f-label">Department</label><select class="f-ctrl" id="eu-dept"></select></div>
+      </div>
+    </div>
+    <div id="eu-perms" style="display:none"><div class="perm-grid" id="eu-perm-grid"></div></div>
+    <div id="eu-sessions" style="display:none"><div id="eu-sess-list"></div></div>
+    <div id="eu-activity" style="display:none"><div id="eu-act-list"></div></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-danger btn-sm" onclick="suspendUserModal()"><i class="fas fa-ban"></i> Suspend</button>
+    <button class="btn btn-outline btn-sm" onclick="closeModal('m-edituser')">Cancel</button>
+    <button class="btn btn-primary btn-sm" onclick="saveUserEdit()"><i class="fas fa-save"></i> Save</button>
+  </div>
+</div></div>
+
+<!-- MATTER DETAIL -->
+<div class="modal-bd" id="m-detail"><div class="modal modal-lg">
+  <div class="modal-hd"><i class="fas fa-briefcase" style="color:var(--g1)"></i><h3 id="det-title">Case Summary</h3><span class="badge b-g" style="margin-left:4px">Active</span><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-detail')"><i class="fas fa-times"></i></button></div>
+  <div style="padding:0 20px"><div class="tab-row">
+    <button class="tab-btn active" onclick="switchDTab(this,'det-s')">Summary</button>
+    <button class="tab-btn" onclick="switchDTab(this,'det-tl')">Timeline</button>
+    <button class="tab-btn" onclick="switchDTab(this,'det-d')">Documents</button>
+    <button class="tab-btn" onclick="switchDTab(this,'det-t')">Tasks</button>
+  </div></div>
+  <div class="modal-body">
+    <div id="det-s"><div class="g2 mb16" id="det-fields"></div><div style="background:var(--bgs);border-radius:8px;padding:13px;margin-bottom:14px"><div class="f-label mb12">Background</div><p id="det-bg" style="font-size:13px;line-height:1.7;color:var(--txt)"></p></div>
+    <div class="fxc gap8"><button class="btn btn-primary btn-sm" onclick="openModal('m-addtask')"><i class="fas fa-tasks"></i> Add Task</button><button class="btn btn-outline btn-sm" onclick="openModal('m-upload')"><i class="fas fa-file-upload"></i> Upload Doc</button></div></div>
+    <div id="det-tl" style="display:none"><div class="tl" id="det-tl-c"></div></div>
+    <div id="det-d" style="display:none"><div id="det-docs-l"></div></div>
+    <div id="det-t" style="display:none"><div id="det-tasks-l"></div></div>
+  </div>
+</div></div>
+
+<!-- MASTER MODAL -->
+<div class="modal-bd" id="m-master"><div class="modal">
+  <div class="modal-hd"><i class="fas fa-sliders-h" style="color:var(--g1)"></i><h3 id="master-title">Manage Master</h3><button class="icon-btn" style="width:28px;height:28px;font-size:12px;margin-left:auto" onclick="closeModal('m-master')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body">
+    <div class="fxc gap8 mb16">
+      <input class="f-ctrl" type="text" id="master-new" placeholder="Enter new value…" style="flex:1" onkeydown="if(event.key==='Enter')addMasterItem()">
+      <button class="btn btn-primary btn-sm" onclick="addMasterItem()"><i class="fas fa-plus"></i> Add</button>
+    </div>
+    <div id="master-list"></div>
+  </div>
+  <div class="modal-ft"><button class="btn btn-outline btn-sm" onclick="closeModal('m-master')">Close</button><button class="btn btn-primary btn-sm" onclick="saveMaster()"><i class="fas fa-save"></i> Save</button></div>
+</div></div>
+
+<!-- TOAST -->
+<div id="toast-area" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px"></div>
+
+<script>
+// ============================================================
+//  MASTER DATA — all dropdown values
+// ============================================================
+const MASTERS = {
+  courts:['Supreme Court of India','Delhi High Court','Bombay High Court','Madras High Court','Calcutta High Court','Allahabad High Court','Karnataka High Court','Gujarat High Court','NCLT Mumbai','NCLT Delhi','NCLAT Delhi','ITAT Delhi','ITAT Mumbai','RERA Haryana','RERA Maharashtra','Consumer Forum Delhi','DRT Delhi','SAT Mumbai','CAT Delhi','TDSAT Delhi'],
+  matterTypes:['Litigation','Arbitration','Advisory','IBC/NCLT','Compliance','Tax Matter','Consumer','Real Estate','Criminal','Constitutional','Labour','IP/Trademark'],
+  practiceAreas:['Constitutional Law','Tax Law','IBC/Insolvency','Arbitration','Criminal Law','Consumer Law','Real Estate/RERA','Labour Law','IP & Trademark','Corporate Law','GST Law','Environmental Law'],
+  stages:['Filing','Admission','Arguments','Rejoinder','Evidence','Cross Exam','Orders','Final Hearing','Judgment','Compliance'],
+  taskTypes:['Draft Petition','Draft Affidavit','Draft Written Submissions','Legal Research','Client Meeting','Court Appearance','Filing','Rejoinder','Brief Preparation','Document Review','Compliance','Miscellaneous'],
+  priorities:['Urgent','High','Medium','Low'],
+  docTypes:['Petition','Affidavit','Vakalatnama','Written Submissions','Rejoinder','Synopsis','Application','Appeal','Reply','Writ Petition','Plaint','Complaint','Annexures','Judgment Copy','Order Copy'],
+  filingStages:['Draft','Under Review','Approved','Signed','Filed','Defects Raised','Defects Cleared','Returned'],
+  clientTypes:['Individual','Corporate','Government','PSU','Partnership Firm','LLP','Trust','NGO'],
+  designations:['Senior Advocate','Advocate','Junior Advocate','Law Clerk','Legal Assistant','Paralegal','Clerk','Accountant','Office Manager','IT Admin'],
+  departments:['Litigation','Arbitration','Tax Law','IBC/NCLT','Consumer','Real Estate','Corporate Advisory','Criminal','IP & Trademark','Filing & Admin','Accounts','Management'],
+  advocates:['Adv. Amit Sharma','Adv. Priya Kapoor','Adv. Rahul Singh','Adv. Sneha Joshi','Adv. Arun Mehta','Adv. Deepak Verma','Adv. Nisha Gupta','Adv. Kavita Nair'],
+};
+let currentMasterKey = '';
+
+// ============================================================
+//  DUMMY DATA — 10+ records per entity
+// ============================================================
+let CLIENTS = [
+  {id:'CLT-001',name:'Sharma & Sons Ltd.',type:'Corporate',mobile:'+91 98100 11111',pan:'AAACS1234E',gst:'07AAACS1234E1Z5',matters:5,status:'Active',email:'sharma@co.in'},
+  {id:'CLT-002',name:'ABC Infra Ltd.',type:'PSU',mobile:'+91 11 2300 0001',pan:'AABCA5678F',gst:'07AABCA5678F1Z2',matters:3,status:'Active',email:'legal@abcinfra.in'},
+  {id:'CLT-003',name:'Priya Mehta',type:'Individual',mobile:'+91 99990 22222',pan:'BAAPM9876G',gst:'',matters:1,status:'Active',email:'priya.mehta@gmail.com'},
+  {id:'CLT-004',name:'Bank of Maharashtra',type:'Government',mobile:'+91 22 2610 0001',pan:'AAACB2345K',gst:'27AAACB2345K1Z4',matters:8,status:'Active',email:'legaldept@bom.co.in'},
+  {id:'CLT-005',name:'Gupta Family Trust',type:'Trust',mobile:'+91 11 4500 0002',pan:'AAATG8765H',gst:'',matters:2,status:'Active',email:'trust@guptafamily.in'},
+  {id:'CLT-006',name:'Tata Consultancy Services',type:'Corporate',mobile:'+91 22 6778 0001',pan:'AAACT3518Q',gst:'27AAACT3518Q1Z5',matters:4,status:'Active',email:'legal@tcs.com'},
+  {id:'CLT-007',name:'Haryana Urban Dev. Authority',type:'Government',mobile:'+91 172 2701 000',pan:'AAACH1234K',gst:'06AAACH1234K1Z8',matters:6,status:'Active',email:'huda@haryana.gov.in'},
+  {id:'CLT-008',name:'Deepak Kumar Verma',type:'Individual',mobile:'+91 98765 33333',pan:'BAADV4567J',gst:'',matters:1,status:'Active',email:'deepakv@gmail.com'},
+  {id:'CLT-009',name:'XYZ Constructions Pvt. Ltd.',type:'Corporate',mobile:'+91 80 4040 0001',pan:'AAACX9876P',gst:'29AAACX9876P1Z3',matters:2,status:'Inactive',email:'legal@xyzcon.in'},
+  {id:'CLT-010',name:'Rajasthan RERA Authority',type:'Government',mobile:'+91 141 2921 000',pan:'AAACR5432M',gst:'08AAACR5432M1Z9',matters:3,status:'Active',email:'rera@rajasthan.gov.in'},
+];
+
+let MATTERS = [
+  {id:'M-2024-001',title:'Constitutional Challenge to GST Act',client:'Sharma & Sons Ltd.',court:'Supreme Court of India',type:'Litigation',area:'Constitutional Law',nextHearing:'17 Jun 2026',adv:'Adv. Amit Sharma',status:'Active',caseNo:'WP(C) 1247/2024',stage:'Final Arguments',bg:'Challenge to constitutional validity of GST Act Section 17(5) restricting ITC. Petitioner claims discriminatory treatment. Interim stay granted 20 Mar 2025.'},
+  {id:'M-2023-045',title:'Arbitration — EPC Contract Dispute',client:'ABC Infra Ltd.',court:'Delhi High Court',type:'Arbitration',area:'Arbitration',nextHearing:'17 Jun 2026',adv:'Adv. Priya Kapoor',status:'Active',caseNo:'ARB/45/2023',stage:'Rejoinder',bg:'Dispute from delay in EPC contract for NHAI highway. Claim of ₹12 crore for extended overhead and escalation costs.'},
+  {id:'M-2025-112',title:'Insolvency Resolution — Section 7',client:'Bank of Maharashtra',court:'NCLT Mumbai',type:'IBC',area:'IBC/Insolvency',nextHearing:'17 Jun 2026',adv:'Adv. Sneha Joshi',status:'Active',caseNo:'CP/887/2025',stage:'Admission',bg:'Application under Section 7 of IBC against XYZ Corp for default of ₹48 crore NPA. CIRP initiation pending admission.'},
+  {id:'M-2026-007',title:'Tax Appeal — AY 2023-24',client:'Gupta Family Trust',court:'ITAT Delhi',type:'Litigation',area:'Tax Law',nextHearing:'18 Jun 2026',adv:'Adv. Rahul Singh',status:'Active',caseNo:'ITA 523/2026',stage:'Evidence',bg:'Appeal against disallowance of trust expenses under Section 11 IT Act. Total disallowance ₹38 lakhs.'},
+  {id:'M-2026-023',title:'RERA Complaint — Builder Delay',client:'Priya Mehta',court:'RERA Haryana',type:'Litigation',area:'Real Estate/RERA',nextHearing:'22 Jun 2026',adv:'Adv. Arun Mehta',status:'Active',caseNo:'RERA/2026/HR/451',stage:'Arguments',bg:'Complaint against builder for 4-year delay in possession. Seeking refund plus 9% interest and compensation.'},
+  {id:'M-2025-088',title:'TCS — Vendor Contract Advisory',client:'Tata Consultancy Services',court:'—',type:'Advisory',area:'Corporate Law',nextHearing:'20 Jun 2026',adv:'Adv. Amit Sharma',status:'Active',caseNo:'ADV/2025/088',stage:'Advisory',bg:'Ongoing advisory on vendor contracts, DPDP Act compliance and employment law for pan-India operations.'},
+  {id:'M-2024-099',title:'HUDA Land Acquisition Challenge',client:'Haryana Urban Dev. Authority',court:'Punjab & Haryana HC',type:'Litigation',area:'Real Estate/RERA',nextHearing:'25 Jun 2026',adv:'Adv. Priya Kapoor',status:'Active',caseNo:'CWP/12345/2024',stage:'Arguments',bg:'Defending HUDA against land acquisition challenge under Land Acquisition Act 2013. 240+ petitioners.'},
+  {id:'M-2026-031',title:'Criminal Appeal — Section 420 IPC',client:'Deepak Kumar Verma',court:'Delhi High Court',type:'Litigation',area:'Criminal Law',nextHearing:'30 Jun 2026',adv:'Adv. Arun Mehta',status:'Active',caseNo:'CRL.A/88/2026',stage:'Arguments',bg:'Appeal against conviction under Section 420/467/468 IPC for cheating in property transaction. 3-year sentence under challenge.'},
+  {id:'M-2025-054',title:'XYZ Corp — Winding Up Petition',client:'XYZ Constructions Pvt. Ltd.',court:'NCLT Delhi',type:'IBC',area:'IBC/Insolvency',nextHearing:'28 Jun 2026',adv:'Adv. Sneha Joshi',status:'Active',caseNo:'CP/432/2025',stage:'Admission',bg:'Company petition for voluntary winding up due to inability to pay debts of ₹23 crore.'},
+  {id:'M-2024-077',title:'Rajasthan RERA Enforcement',client:'Rajasthan RERA Authority',court:'RERA Rajasthan',type:'Advisory',area:'Real Estate/RERA',nextHearing:'24 Jun 2026',adv:'Adv. Rahul Singh',status:'Active',caseNo:'RERA/RAJ/2024/077',stage:'Compliance',bg:'Advisory and enforcement support for 12 ongoing projects with defaulting promoters.'},
+];
+
+let HEARINGS = [
+  {sr:1,title:'Sharma & Sons v. Union of India',caseNo:'WP(C) 1247/2024',court:'SC · Bench 4',time:'10:30 AM',stage:'Arguments',adv:'Adv. A. Sharma',status:'Urgent',type:'SC'},
+  {sr:2,title:'ABC Infra Ltd. v. NHAI',caseNo:'ARB/45/2023',court:'Delhi HC · Ct.5',time:'11:00 AM',stage:'Rejoinder',adv:'Adv. P. Kapoor',status:'Ready',type:'HC'},
+  {sr:3,title:'Gupta Trust v. ITO',caseNo:'ITA 523/2026',court:'ITAT Delhi · B',time:'11:30 AM',stage:'Cross Exam',adv:'Adv. R. Singh',status:'Ready',type:'Tribunal'},
+  {sr:4,title:'In the matter of XYZ Corp',caseNo:'CP/887/2025',court:'NCLT Mumbai · Ct.2',time:'2:00 PM',stage:'Admission',adv:'Adv. S. Joshi',status:'Urgent',type:'Tribunal'},
+  {sr:5,title:'Priya Mehta v. State of Delhi',caseNo:'CRL.A 88/2026',court:'Delhi HC · Ct.8',time:'3:15 PM',stage:'Orders',adv:'Adv. A. Mehta',status:'Ready',type:'HC'},
+  {sr:6,title:'HUDA v. Respondents',caseNo:'CWP/12345/2024',court:'P&H HC · Ct.12',time:'3:30 PM',stage:'Arguments',adv:'Adv. P. Kapoor',status:'Ready',type:'HC'},
+  {sr:7,title:'Bank of Maharashtra v. M/s ABC',caseNo:'DRT/123/2025',court:'DRT Delhi',time:'4:00 PM',stage:'Evidence',adv:'Adv. R. Singh',status:'Pending',type:'Tribunal'},
+  {sr:8,title:'Sharma Trust v. CIT',caseNo:'ITA 890/2026',court:'ITAT Delhi · A',time:'10:00 AM',stage:'Arguments',adv:'Adv. A. Sharma',status:'Ready',type:'Tribunal'},
+  {sr:9,title:'Deepak Verma v. State',caseNo:'CRL.A/99/2026',court:'Delhi HC · Ct.6',time:'11:00 AM',stage:'Final Hearing',adv:'Adv. A. Mehta',status:'Urgent',type:'HC'},
+  {sr:10,title:'XYZ Corp Winding Up',caseNo:'CP/432/2025',court:'NCLT Delhi',time:'2:30 PM',stage:'Admission',adv:'Adv. S. Joshi',status:'Pending',type:'Tribunal'},
+];
+
+let TASKS = [
+  {id:'TK-001',title:'Draft Written Submissions – ABC Infra v. NHAI',matter:'M-2023-045',priority:'Urgent',due:'2026-06-14',assign:'Adv. Priya Kapoor',status:'Overdue',done:false,type:'Draft Written Submissions'},
+  {id:'TK-002',title:'Prepare Affidavit – SC WP 1247',matter:'M-2024-001',priority:'Urgent',due:'2026-06-17',assign:'Adv. Rahul Singh',status:'Due Today',done:false,type:'Draft Affidavit'},
+  {id:'TK-003',title:'Research IBC Section 7 Grounds',matter:'M-2025-112',priority:'High',due:'2026-06-19',assign:'Adv. Sneha Joshi',status:'In Progress',done:false,type:'Legal Research'},
+  {id:'TK-004',title:'File VAT Appeal – Gupta Trust',matter:'M-2026-007',priority:'High',due:'2026-06-22',assign:'Adv. Arun Mehta',status:'To Do',done:false,type:'Filing'},
+  {id:'TK-005',title:'Client Meeting – TCS Compliance',matter:'M-2025-088',priority:'Medium',due:'2026-06-20',assign:'Adv. Amit Sharma',status:'To Do',done:false,type:'Client Meeting'},
+  {id:'TK-006',title:'Prepare Synopsis – ITAT ITA 523',matter:'M-2026-007',priority:'High',due:'2026-06-18',assign:'Adv. Rahul Singh',status:'Under Review',done:false,type:'Brief Preparation'},
+  {id:'TK-007',title:'Vakalatnama – CRL Appeal 88',matter:'M-2026-031',priority:'Medium',due:'2026-06-18',assign:'Adv. Arun Mehta',status:'Under Review',done:false,type:'Draft Petition'},
+  {id:'TK-008',title:'File Rejoinder – ARB 45/2023',matter:'M-2023-045',priority:'Low',due:'2026-06-15',assign:'Adv. Priya Kapoor',status:'Done',done:true,type:'Rejoinder'},
+  {id:'TK-009',title:'Update Summary – NCLT CP 887',matter:'M-2025-112',priority:'Medium',due:'2026-06-18',assign:'Adv. Sneha Joshi',status:'In Progress',done:false,type:'Miscellaneous'},
+  {id:'TK-010',title:'Draft RERA Complaint – Priya Mehta',matter:'M-2026-023',priority:'High',due:'2026-06-12',assign:'Adv. Arun Mehta',status:'Done',done:true,type:'Draft Petition'},
+];
+
+let FILINGS = [
+  {id:'FL-0041',doc:'Affidavit of Evidence',matter:'Sharma v. UoI',court:'Supreme Court',due:'2026-06-17',stage:'Draft',status:'Due Today'},
+  {id:'FL-0042',doc:'Written Submissions',matter:'ABC Infra v. NHAI',court:'Delhi HC',due:'2026-06-17',stage:'Approved',status:'Due Today'},
+  {id:'FL-0038',doc:'Additional Documents',matter:'XYZ Corp NCLT',court:'NCLT Mumbai',due:'2026-06-18',stage:'Signed',status:'Pending'},
+  {id:'FL-0035',doc:'VAT Appeal Petition',matter:'Gupta Family Trust',court:'ITAT Delhi',due:'2026-06-22',stage:'Draft',status:'In Progress'},
+  {id:'FL-0030',doc:'RERA Complaint',matter:'Priya Mehta',court:'RERA Haryana',due:'2026-06-25',stage:'Approved',status:'Ready to File'},
+  {id:'FL-0028',doc:'Vakalatnama',matter:'Deepak Verma',court:'Delhi HC',due:'2026-06-17',stage:'Signed',status:'Filed'},
+  {id:'FL-0025',doc:'Synopsis',matter:'HUDA Matter',court:'P&H HC',due:'2026-06-24',stage:'Under Review',status:'In Progress'},
+  {id:'FL-0022',doc:'Written Statement',matter:'XYZ Constructions',court:'NCLT Delhi',due:'2026-06-28',stage:'Draft',status:'In Progress'},
+  {id:'FL-0019',doc:'Compliance Report',matter:'Rajasthan RERA',court:'RERA Rajasthan',due:'2026-06-30',stage:'Approved',status:'Ready to File'},
+  {id:'FL-0015',doc:'Application for Interim Stay',matter:'TCS Advisory',court:'Delhi HC',due:'2026-06-20',stage:'Signed',status:'Filed'},
+];
+
+let BILLING = [
+  {id:'INV-2026-041',client:'Sharma & Sons Ltd.',desc:'SC Hearing Fees + Drafting – May',amount:75000,date:'2026-06-01',status:'Overdue'},
+  {id:'INV-2026-040',client:'ABC Infra Ltd.',desc:'Arbitration Fees – Delhi HC ARB/45',amount:120000,date:'2026-05-28',status:'Unpaid'},
+  {id:'INV-2026-038',client:'Bank of Maharashtra',desc:'NCLT Retainership – May',amount:50000,date:'2026-05-25',status:'Paid'},
+  {id:'INV-2026-035',client:'Gupta Family Trust',desc:'ITAT Appearance + Brief',amount:35000,date:'2026-05-20',status:'Paid'},
+  {id:'INV-2026-033',client:'Priya Mehta',desc:'RERA Complaint + Consultation',amount:15000,date:'2026-05-15',status:'Paid'},
+  {id:'INV-2026-030',client:'Tata Consultancy Services',desc:'Corporate Advisory – Apr + May',amount:200000,date:'2026-05-10',status:'Paid'},
+  {id:'INV-2026-028',client:'HUDA',desc:'Hearing Fees – PHC CWP/12345',amount:60000,date:'2026-05-05',status:'Unpaid'},
+  {id:'INV-2026-025',client:'Deepak Kumar Verma',desc:'Criminal Appeal – Retainer',amount:40000,date:'2026-04-30',status:'Paid'},
+  {id:'INV-2026-022',client:'XYZ Constructions',desc:'NCLT Winding Up Petition',amount:80000,date:'2026-04-25',status:'Overdue'},
+  {id:'INV-2026-018',client:'Rajasthan RERA',desc:'Advisory + Enforcement Q1',amount:150000,date:'2026-04-01',status:'Paid'},
+];
+
+let USERS = [
+  {id:1,name:'Adv. Amit Sharma',email:'amit@tubalaw.com',role:'admin',dept:'Management',matters:'All (147)',lastLogin:'Today 9:04 AM',mfa:true,status:'online',av:'AS',bg:'linear-gradient(135deg,#b45309,#d97706)',mobile:'+91 98100 11111'},
+  {id:2,name:'Adv. Priya Kapoor',email:'priya@tubalaw.com',role:'senior',dept:'Litigation',matters:'41 matters',lastLogin:'Today 8:50 AM',mfa:true,status:'online',av:'PK',bg:'linear-gradient(135deg,#0d6637,#16a34a)',mobile:'+91 98200 22222'},
+  {id:3,name:'Adv. Rahul Singh',email:'rahul@tubalaw.com',role:'advocate',dept:'Tax Law',matters:'23 matters',lastLogin:'Today 9:15 AM',mfa:true,status:'online',av:'RS',bg:'linear-gradient(135deg,#065f46,#059669)',mobile:'+91 98300 33333'},
+  {id:4,name:'Adv. Sneha Joshi',email:'sneha@tubalaw.com',role:'advocate',dept:'IBC/NCLT',matters:'18 matters',lastLogin:'Yesterday 6:30 PM',mfa:true,status:'offline',av:'SJ',bg:'linear-gradient(135deg,#6d28d9,#7c3aed)',mobile:'+91 98400 44444'},
+  {id:5,name:'Adv. Arun Mehta',email:'arun@tubalaw.com',role:'advocate',dept:'Arbitration',matters:'19 matters',lastLogin:'Today 7:45 AM',mfa:false,status:'online',av:'AM',bg:'linear-gradient(135deg,#be185d,#db2777)',mobile:'+91 98500 55555'},
+  {id:6,name:'Ravi Mehta',email:'ravi@tubalaw.com',role:'clerk',dept:'Filing',matters:'All (view)',lastLogin:'Today 9:30 AM',mfa:true,status:'online',av:'RM',bg:'linear-gradient(135deg,#0f766e,#0d9488)',mobile:'+91 98600 66666'},
+  {id:7,name:'Sunita Rao',email:'sunita@tubalaw.com',role:'clerk',dept:'Accounts',matters:'Billing only',lastLogin:'Jun 16 4:00 PM',mfa:false,status:'offline',av:'SR',bg:'linear-gradient(135deg,#b45309,#92400e)',mobile:'+91 98700 77777'},
+  {id:8,name:'Adv. Deepak Verma',email:'deepak@tubalaw.com',role:'advocate',dept:'Consumer',matters:'9 matters',lastLogin:'Jun 15 2:10 PM',mfa:true,status:'offline',av:'DV',bg:'linear-gradient(135deg,#1d4ed8,#2563a8)',mobile:'+91 98800 88888'},
+  {id:9,name:'Adv. Nisha Gupta',email:'nisha@tubalaw.com',role:'advocate',dept:'Litigation',matters:'12 matters',lastLogin:'Today 8:00 AM',mfa:true,status:'online',av:'NG',bg:'linear-gradient(135deg,#065f46,#16a34a)',mobile:'+91 98900 99999'},
+  {id:10,name:'Mohan Lal',email:'mohan@tubalaw.com',role:'clerk',dept:'Filing',matters:'Filing only',lastLogin:'Jun 12 3:00 PM',mfa:false,status:'inactive',av:'ML',bg:'linear-gradient(135deg,#b91c1c,#ef4444)',mobile:'+91 97000 00000'},
+];
+
+const ROLE_LABELS={admin:'Admin',senior:'Sr. Advocate',advocate:'Advocate',clerk:'Clerk',readonly:'Read-only'};
+const ROLE_CLS={admin:'b-a',senior:'b-g',advocate:'b-g',clerk:'b-t',readonly:'b-gr'};
+const STATUS_CLS={online:'s-on',offline:'s-off',inactive:'s-ina'};
+const STATUS_LBL={online:'Online',offline:'Offline',inactive:'Inactive'};
+
+const ALL_PERMS=[
+  {k:'view_all',l:'View All Matters',s:'Read all matters'},{k:'create_matters',l:'Create Matters',s:'Register new matters'},
+  {k:'edit_matters',l:'Edit Matters',s:'Modify matter details'},{k:'delete_matters',l:'Delete Matters',s:'Remove permanently'},
+  {k:'view_docs',l:'View Documents',s:'Access DMS files'},{k:'upload_docs',l:'Upload Documents',s:'Add files'},
+  {k:'delete_docs',l:'Delete Documents',s:'Remove files'},{k:'manage_tasks',l:'Manage Tasks',s:'Assign and close tasks'},
+  {k:'view_billing',l:'View Billing',s:'See invoices'},{k:'create_invoices',l:'Create Invoices',s:'Generate invoices'},
+  {k:'manage_clients',l:'Manage Clients',s:'Add, edit, delete clients'},{k:'export_data',l:'Export Data',s:'Download reports'},
+  {k:'manage_users',l:'Manage Users',s:'Invite and configure users'},{k:'system_settings',l:'System Settings',s:'Modify config'},
+  {k:'view_audit',l:'View Audit Log',s:'Read security trail'},
+];
+const ROLE_PERMS={
+  admin:ALL_PERMS.map(p=>p.k),
+  senior:['view_all','create_matters','edit_matters','view_docs','upload_docs','manage_tasks','view_billing','manage_clients','export_data'],
+  advocate:['view_all','create_matters','edit_matters','view_docs','upload_docs','manage_tasks'],
+  clerk:['view_all','view_docs','upload_docs','manage_tasks','view_billing'],
+  readonly:['view_all','view_docs'],
+};
+
+const NOTIFS=[
+  {color:'var(--red)',icon:'fa-gavel',title:'SC Hearing in 45 min',sub:'Sharma & Sons v. UoI · Bench 4 · 10:30 AM'},
+  {color:'var(--acc)',icon:'fa-file-alt',title:'Filing Due Today',sub:'Affidavit FL-0041 · SC WP 1247'},
+  {color:'var(--acc)',icon:'fa-tasks',title:'Task Overdue',sub:'Written Submissions – ABC Infra'},
+  {color:'var(--g2)',icon:'fa-file-import',title:'New Order Uploaded',sub:'NCLT Mumbai · Order in CP/887/2025'},
+  {color:'var(--blue)',icon:'fa-user-plus',title:'Invite Accepted',sub:'Adv. Nisha Gupta activated account'},
+];
+
+const AUDIT_LOG=[
+  {ico:'fa-sign-in-alt',cls:'b-g',lbl:'Login',user:'Adv. Amit Sharma',action:'Logged in from 103.21.244.5',time:'Today 9:04 AM'},
+  {ico:'fa-user-plus',cls:'b-b',lbl:'Invite',user:'Adv. Amit Sharma',action:'Invited Adv. Kavita Nair',time:'Today 8:50 AM'},
+  {ico:'fa-file-export',cls:'b-a',lbl:'Export',user:'Adv. Priya Kapoor',action:'Exported Revenue Report',time:'Jun 16 5:10 PM'},
+  {ico:'fa-key',cls:'b-p',lbl:'Perm',user:'Adv. Amit Sharma',action:'Changed Rahul role → Sr. Advocate',time:'Jun 16 3:00 PM'},
+  {ico:'fa-trash',cls:'b-r',lbl:'Delete',user:'Adv. Priya Kapoor',action:'Deleted: Draft_v1.docx',time:'Jun 15 2:40 PM'},
+  {ico:'fa-sign-in-alt',cls:'b-g',lbl:'Login',user:'Ravi Mehta',action:'Logged in from 49.248.8.100',time:'Jun 15 10:00 AM'},
+  {ico:'fa-ban',cls:'b-r',lbl:'Suspend',user:'Adv. Amit Sharma',action:'Suspended: Mohan Lal',time:'Jun 14 6:00 PM'},
+  {ico:'fa-file-alt',cls:'b-b',lbl:'Matter',user:'Adv. Sneha Joshi',action:'Created matter CP/887/2025',time:'Jun 14 2:00 PM'},
+];
+
+const SESSIONS=[
+  {user:'Adv. Amit Sharma',device:'Chrome 124 · Windows 11',ip:'103.21.244.5',loc:'New Delhi',started:'Today 9:04 AM',current:true},
+  {user:'Adv. Priya Kapoor',device:'Safari · iPhone 15',ip:'49.248.8.101',loc:'Gurugram',started:'Today 8:50 AM',current:false},
+  {user:'Adv. Rahul Singh',device:'Firefox · macOS',ip:'103.21.244.8',loc:'New Delhi',started:'Today 9:15 AM',current:false},
+  {user:'Ravi Mehta',device:'Chrome · Android',ip:'49.248.8.102',loc:'Noida',started:'Today 9:30 AM',current:false},
+  {user:'Adv. Arun Mehta',device:'Edge · Windows 10',ip:'103.21.244.12',loc:'New Delhi',started:'Today 7:45 AM',current:false},
+];
+
+const KB_JUDGMENTS=[
+  {title:'K. Gobindan Kutty v. Union of India (2023)',court:'Supreme Court · GST ITC',tag:'b-b',lbl:'GST'},
+  {title:'Pioneer Urban Land v. Govindan Raghavan (2019)',court:'Supreme Court · RERA Landmark',tag:'b-p',lbl:'RERA'},
+  {title:'Committee of Creditors v. Essar Steel (2019)',court:'Supreme Court · IBC · 5 Judge',tag:'b-r',lbl:'IBC'},
+  {title:'Innoventive Industries v. ICICI Bank (2018)',court:'Supreme Court · IBC Trigger',tag:'b-r',lbl:'IBC'},
+  {title:'Ansal Properties v. Jagdish Mehrotra (2022)',court:'NCDRC · Builder Delay',tag:'b-a',lbl:'Consumer'},
+  {title:'CIT v. Bombay Burmah Trading (2023)',court:'Bombay HC · Tax Law',tag:'b-g',lbl:'Tax'},
+  {title:'Maruti Udyog v. Ram Lal (2006)',court:'Supreme Court · Labour',tag:'b-t',lbl:'Labour'},
+  {title:'Suresh Kumar Koushal v. NAZ Foundation (2013)',court:'Supreme Court · Constitutional',tag:'b-g',lbl:'Const.'},
+];
+
+const DOC_FOLDERS=[
+  {name:'Sharma & Sons Ltd.',count:23,bg:'#fef3c7',tc:'#b45309',upd:'Today'},
+  {name:'ABC Infra Ltd.',count:47,bg:'#dbeafe',tc:'#1d4ed8',upd:'Jun 15'},
+  {name:'NCLT – XYZ Corp',count:18,bg:'#dcfce7',tc:'var(--g1)',upd:'Jun 16'},
+  {name:'Gupta Family Trust',count:31,bg:'#fce7f3',tc:'#be185d',upd:'Jun 14'},
+  {name:'TCS Advisory',count:12,bg:'#ede9fe',tc:'var(--purple)',upd:'Jun 13'},
+  {name:'Templates & Formats',count:15,bg:'#ccfbf1',tc:'var(--teal)',upd:'Jun 10'},
+];
+
+const DOC_RECENT=[
+  {name:'Affidavit_SC_WP1247.pdf',meta:'Sharma v. UoI · 2.4 MB · Today',icon:'fa-file-pdf',bg:'#fee2e2',tc:'#b91c1c',tag:'b-a',lbl:'Draft'},
+  {name:'WrittenSubmissions_NHAI.docx',meta:'ABC Infra · 890 KB · Jun 16',icon:'fa-file-word',bg:'#dbeafe',tc:'#1d4ed8',tag:'b-g',lbl:'Final'},
+  {name:'Order_NCLT_CP887.pdf',meta:'XYZ Corp · 156 KB · Jun 15',icon:'fa-file-pdf',bg:'#fee2e2',tc:'#b91c1c',tag:'b-b',lbl:'Order'},
+  {name:'BillingStatement_June.xlsx',meta:'Accounts · 1.1 MB · Jun 15',icon:'fa-file-excel',bg:'#dcfce7',tc:'var(--g1)',tag:'b-gr',lbl:'Internal'},
+  {name:'Vakalatnama_Signed.jpg',meta:'Gupta Trust · 450 KB · Jun 14',icon:'fa-file-image',bg:'#fce7f3',tc:'#be185d',tag:'b-g',lbl:'Signed'},
+  {name:'Synopsis_ITAT_ITA523.pdf',meta:'Gupta Trust · 320 KB · Jun 14',icon:'fa-file-pdf',bg:'#fee2e2',tc:'#b91c1c',tag:'b-a',lbl:'Review'},
+];
+
+const MASTER_CARDS=[
+  {key:'courts',title:'Courts & Forums',icon:'fa-landmark',bg:'#dcfce7',tc:'var(--g1)'},
+  {key:'matterTypes',title:'Matter Types',icon:'fa-briefcase',bg:'#dbeafe',tc:'var(--blue)'},
+  {key:'practiceAreas',title:'Practice Areas',icon:'fa-balance-scale',bg:'#ede9fe',tc:'var(--purple)'},
+  {key:'stages',title:'Hearing Stages',icon:'fa-gavel',bg:'#fef3c7',tc:'var(--acc)'},
+  {key:'taskTypes',title:'Task Types',icon:'fa-tasks',bg:'#ccfbf1',tc:'var(--teal)'},
+  {key:'priorities',title:'Priority Levels',icon:'fa-flag',bg:'#fee2e2',tc:'var(--red)'},
+  {key:'docTypes',title:'Document Types',icon:'fa-file-alt',bg:'#dcfce7',tc:'var(--g1)'},
+  {key:'filingStages',title:'Filing Stages',icon:'fa-file-import',bg:'#fce7f3',tc:'#be185d'},
+  {key:'clientTypes',title:'Client Types',icon:'fa-users',bg:'#dbeafe',tc:'var(--blue)'},
+  {key:'designations',title:'Designations',icon:'fa-id-badge',bg:'#ede9fe',tc:'var(--purple)'},
+  {key:'departments',title:'Departments',icon:'fa-building',bg:'#fef3c7',tc:'var(--acc)'},
+  {key:'advocates',title:'Advocates',icon:'fa-user-tie',bg:'#dcfce7',tc:'var(--g1)'},
+];
+
+// ============================================================
+//  UTILS
+// ============================================================
+function toast(msg,t='g',d=3000){
+  const bg={g:'var(--g1)',r:'var(--red)',a:'var(--acc)',b:'var(--blue)'}[t]||'var(--g1)';
+  const el=document.createElement('div');
+  el.style.cssText=`background:${bg};color:#fff;padding:10px 16px;border-radius:9px;font-size:12.5px;font-weight:600;box-shadow:var(--shl);display:flex;align-items:center;gap:8px;animation:slideIn .2s ease;max-width:300px`;
+  el.innerHTML=`<i class="fas fa-check-circle"></i>${msg}`;
+  document.getElementById('toast-area').appendChild(el);
+  setTimeout(()=>el.remove(),d);
+}
+
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  populateModalSelects(id);
+}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.addEventListener('click',e=>{if(e.target.classList.contains('modal-bd'))e.target.classList.remove('open')});
+
+function fillSel(id,arr){const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML=arr.map(v=>`<option>${v}</option>`).join('');if(arr.includes(cur))el.value=cur}
+
+function populateModalSelects(id){
+  const cn=CLIENTS.map(c=>c.name);
+  const mt=MATTERS.map(m=>m.id+' – '+m.title.substring(0,28));
+  if(id==='m-addmatter'){fillSel('mat-type',MASTERS.matterTypes);fillSel('mat-client',cn);fillSel('mat-court',MASTERS.courts);fillSel('mat-area',MASTERS.practiceAreas);fillSel('mat-adv',MASTERS.advocates)}
+  if(id==='m-addclient'){fillSel('cl-type',MASTERS.clientTypes)}
+  if(id==='m-addtask'){fillSel('tk-matter',mt);fillSel('tk-assign',MASTERS.advocates);fillSel('tk-type',MASTERS.taskTypes);document.getElementById('tk-due').value=today()}
+  if(id==='m-addfiling'){fillSel('fl-doctype',MASTERS.docTypes);fillSel('fl-matter',mt);fillSel('fl-court',MASTERS.courts);document.getElementById('fl-due').value=today()}
+  if(id==='m-invoice'){fillSel('inv-client',cn);fillSel('inv-matter',mt);document.getElementById('inv-date').value=today()}
+  if(id==='m-addbilling'){fillSel('be-client',cn)}
+  if(id==='m-upload'){fillSel('up-matter',mt);fillSel('up-doctype',MASTERS.docTypes)}
+  if(id==='m-invite'){fillSel('inv-desig',MASTERS.designations);fillSel('inv-dept',MASTERS.departments)}
+  if(id==='m-notif'){renderNotifications()}
+  if(id==='m-master'){} // handled by openMaster
+}
+
+function today(){return new Date().toISOString().split('T')[0]}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+
+// Page routing
+const PG_ICONS={dashboard:'fa-th-large',causelist:'fa-gavel',matters:'fa-briefcase',clients:'fa-users',tasks:'fa-tasks',filings:'fa-file-alt',tracker:'fa-search',documents:'fa-folder-open',knowledge:'fa-book',ai:'fa-robot',billing:'fa-rupee-sign',reports:'fa-chart-bar',diary:'fa-calendar-alt',usermgmt:'fa-users-cog',masters:'fa-sliders-h',settings:'fa-cog'};
+const PG_TITLES={dashboard:'Dashboard',causelist:'Cause List',matters:'Matters',clients:'Clients',tasks:'Tasks & Workflow',filings:'Filing Management',tracker:'Court Tracking Engine',documents:'Document Management',knowledge:'Knowledge Repository',ai:'AI Legal Assistant',billing:'Billing & Expenses',reports:'Reports & Analytics',diary:'Advocate Diary',usermgmt:'User Management',masters:'Masters',settings:'Settings'};
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-a').forEach(a=>a.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
+  const a=document.querySelector(`.nav-a[onclick*="'${id}'"]`);if(a)a.classList.add('active');
+  document.getElementById('topbar-title').innerHTML=`<div class="page-icon"><i class="fas ${PG_ICONS[id]||'fa-circle'}"></i></div>${PG_TITLES[id]||id}`;
+  window.scrollTo(0,0);
+  const renders={dashboard:renderDashboard,causelist:()=>renderCauseList(HEARINGS),matters:()=>renderMatters(MATTERS),clients:()=>renderClients(CLIENTS),tasks:renderKanban,filings:()=>renderFilings(FILINGS),documents:renderDocs,knowledge:renderKB,ai:initChat,billing:()=>renderBilling(BILLING),diary:renderDiary,usermgmt:renderUserMgmt,masters:renderMasters,tracker:initTracker};
+  if(renders[id])renders[id]();
+}
+
+// ============================================================
+//  LOGIN
+// ============================================================
+function showV(id){['v-login','v-forgot','v-otp'].forEach(v=>{const el=document.getElementById(v);if(el)el.style.display=v===id?'':'none'})}
+function togglePwd(){const i=document.getElementById('lpass'),ic=document.getElementById('ptog');i.type=i.type==='password'?'text':'password';ic.classList.toggle('fa-eye');ic.classList.toggle('fa-eye-slash')}
+function ql(r){const m={admin:'amit@tubalaw.com',advocate:'priya@tubalaw.com',clerk:'ravi@tubalaw.com'};document.getElementById('lemail').value=m[r];setTimeout(doLogin,250)}
+function doLogin(){
+  const btn=document.querySelector('.l-btn');if(!btn)return;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Signing in…';btn.disabled=true;
+  setTimeout(()=>{
+    document.getElementById('login-screen').style.display='none';
+    document.body.classList.remove('logged-out');
+    btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Sign In to CourtOS';btn.disabled=false;
+    showPage('dashboard');
+  },900);
+}
+// OTP inputs
+(()=>{const c=document.getElementById('otpCont');if(!c)return;for(let i=0;i<6;i++){const inp=document.createElement('input');inp.className='otp-inp';inp.maxLength=1;inp.oninput=function(){if(this.value&&this.nextElementSibling)this.nextElementSibling.focus()};c.appendChild(inp)}})();
+
+// Theme
+let darkMode=false;
+function toggleTheme(){darkMode=!darkMode;document.documentElement.setAttribute('data-theme',darkMode?'dark':'');document.getElementById('themeTog').classList.toggle('dark',darkMode)}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function renderDashboard(){
+  const dc=document.getElementById('dash-cause');
+  if(dc)dc.innerHTML=HEARINGS.slice(0,5).map(h=>`
+    <div class="cause-row ${h.status==='Urgent'?'urg':''}" onclick="openMatterDetail('${MATTERS[h.sr-1]?.id||MATTERS[0].id}')">
+      <div class="cause-num">${h.sr}</div>
+      <div style="flex:1"><div style="font-weight:700;font-size:12.5px">${h.title}</div><div class="txt-xs txt-muted">${h.caseNo} · ${h.court}</div></div>
+      <span class="badge ${h.status==='Urgent'?'b-r':h.status==='Ready'?'b-g':'b-a'}">${h.status}</span>
+    </div>`).join('');
+
+  const dtl=document.getElementById('dash-tl');
+  if(dtl)dtl.innerHTML=`
+    <div class="tl-item urgent"><div class="tl-date">Today · 10:30 AM</div><div class="tl-content">SC Bench 4 — Sharma v. UoI</div><div class="tl-sub">Final Arguments · Adv. Amit Sharma</div></div>
+    <div class="tl-item"><div class="tl-date">Today · 2:00 PM</div><div class="tl-content">NCLT Mumbai — XYZ Corp CP/887</div><div class="tl-sub">Admission Hearing · Section 7 IBC</div></div>
+    <div class="tl-item"><div class="tl-date">Tomorrow · 11:00 AM</div><div class="tl-content">Delhi HC — ABC Infra v. NHAI</div><div class="tl-sub">Written Submissions to file</div></div>
+    <div class="tl-item"><div class="tl-date">Jun 20 · 3:30 PM</div><div class="tl-content">Client Meeting — TCS</div><div class="tl-sub">Review compliance strategy</div></div>
+    <div class="tl-item past"><div class="tl-date">Jun 15 · Past</div><div class="tl-content">Order — Gupta v. Revenue</div><div class="tl-sub">Favourable order passed</div></div>`;
+
+  const dts=document.getElementById('dash-tasks');
+  if(dts)dts.innerHTML=TASKS.slice(0,4).map(t=>`
+    <div class="task-row">
+      <div class="task-cb ${t.done?'done':''}" onclick="toggleTask('${t.id}',this)">${t.done?'<i class="fas fa-check"></i>':''}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:12.5px">${t.title}</div><div class="txt-xs txt-muted mt8">${t.assign} · ${t.status==='Overdue'?'<span style="color:var(--red)">Overdue</span>':t.due}</div></div>
+      <span class="badge ${t.status==='Overdue'||t.status==='Due Today'?'b-r':t.done?'b-g':'b-a'}">${t.done?'Done':t.status}</span>
+    </div>`).join('');
+
+  const dco=document.getElementById('dash-courts');
+  if(dco){const cs=[{n:'Supreme Court',c:23,w:60},{n:'Delhi High Court',c:41,w:80},{n:'NCLT/NCLAT',c:18,w:42},{n:'District Courts',c:27,w:55},{n:'ITAT Tribunals',c:15,w:28},{n:'Consumer/RERA',c:9,w:18}];
+  dco.innerHTML=cs.map(c=>`<div class="fxb" style="margin-bottom:10px"><span style="font-size:12.5px">${c.n}</span><div class="fxc gap8"><div style="width:80px" class="progress"><div class="progress-bar prog-g" style="width:${c.w}%"></div></div><span class="badge b-g">${c.c}</span></div></div>`).join('')}
+
+  const dtm=document.getElementById('dash-team');
+  if(dtm){const t=[{n:'Adv. Priya Kapoor',v:90,l:'18/20'},{n:'Adv. Rahul Singh',v:67,l:'12/18'},{n:'Adv. Sneha Joshi',v:47,l:'7/15'},{n:'Adv. Arun Mehta',v:88,l:'22/25'}];
+  dtm.innerHTML=t.map(x=>`<div style="margin-bottom:13px"><div class="fxb mb12"><span style="font-size:12.5px;font-weight:700">${x.n}</span><span style="font-size:11px;color:var(--g1)">${x.l} tasks</span></div><div class="progress"><div class="progress-bar prog-g" style="width:${x.v}%"></div></div></div>`).join('')}
+}
+
+// ============================================================
+//  CAUSE LIST
+// ============================================================
+const SG={'Arguments':'b-r','Rejoinder':'b-a','Cross Exam':'b-b','Admission':'b-b','Orders':'b-g','Final Hearing':'b-r','Evidence':'b-g','Compliance':'b-t'};
+const SC2={'Urgent':'b-r','Ready':'b-g','Pending':'b-a','Filed':'b-g','Due Today':'b-r','Overdue':'b-r','In Progress':'b-a','Done':'b-g'};
+
+function renderCauseList(list){
+  document.getElementById('cause-count').textContent=list.length+' Hearings';
+  document.getElementById('cause-tbody').innerHTML=list.map(h=>`
+    <tr onclick="openMatterDetail('${MATTERS[(h.sr-1)%MATTERS.length].id}')">
+      <td><strong>${h.sr}</strong></td>
+      <td><div style="font-weight:700">${h.title}</div></td>
+      <td><span class="badge b-b" style="font-family:var(--mono);font-size:10px">${h.caseNo}</span></td>
+      <td>${h.court}</td><td><strong>${h.time}</strong></td>
+      <td><span class="badge ${SG[h.stage]||'b-gr'}">${h.stage}</span></td>
+      <td>${h.adv}</td>
+      <td><span class="badge ${SC2[h.status]||'b-gr'}">${h.status}</span></td>
+    </tr>`).join('');
+}
+function filterCause(f,el){pillActive(el);renderCauseList(f==='all'?HEARINGS:HEARINGS.filter(h=>h.type===f||h.status===f))}
+
+// ============================================================
+//  MATTERS
+// ============================================================
+function renderMatters(list){
+  document.getElementById('matters-count').textContent=list.length+' Matters';
+  document.getElementById('matters-tbody').innerHTML=list.map(m=>`
+    <tr onclick="openMatterDetail('${m.id}')">
+      <td><span style="font-family:var(--mono);font-size:11px">${m.id}</span></td>
+      <td><div style="font-weight:700">${m.title}</div><div class="txt-xs txt-muted">${m.area}</div></td>
+      <td>${m.client}</td><td style="font-size:12px">${m.court}</td>
+      <td><span class="badge ${m.type==='IBC'?'b-r':m.type==='Arbitration'?'b-p':m.type==='Advisory'?'b-t':'b-b'}">${m.type}</span></td>
+      <td><strong style="${m.nextHearing==='17 Jun 2026'?'color:var(--red)':''}">${m.nextHearing}</strong></td>
+      <td style="font-size:12px">${m.adv}</td>
+      <td><span class="badge b-g">${m.status}</span></td>
+      <td><button class="btn btn-outline btn-xs" onclick="event.stopPropagation();openMatterDetail('${m.id}')">View</button></td>
+    </tr>`).join('');
+}
+function filterMatters(f,el){pillActive(el);renderMatters(f==='all'?MATTERS:MATTERS.filter(m=>m.type===f||m.type.includes(f)))}
+function searchMatters(q){renderMatters(MATTERS.filter(m=>m.title.toLowerCase().includes(q.toLowerCase())||m.client.toLowerCase().includes(q.toLowerCase())||m.id.toLowerCase().includes(q.toLowerCase())))}
+
+function openMatterDetail(id){
+  const m=MATTERS.find(x=>x.id===id)||MATTERS[0];
+  document.getElementById('det-title').textContent='Case — '+m.id;
+  document.getElementById('det-fields').innerHTML=`
+    <div><div class="txt-muted txt-xs">Client</div><div class="txt-bold" style="font-size:13px">${m.client}</div></div>
+    <div><div class="txt-muted txt-xs">Case No.</div><div style="font-family:var(--mono);font-size:12px;font-weight:700">${m.caseNo}</div></div>
+    <div><div class="txt-muted txt-xs">Court</div><div class="txt-bold">${m.court}</div></div>
+    <div><div class="txt-muted txt-xs">Stage</div><span class="badge ${SG[m.stage]||'b-gr'}">${m.stage}</span></div>
+    <div><div class="txt-muted txt-xs">Next Hearing</div><div class="txt-bold" style="color:var(--red)">${m.nextHearing}</div></div>
+    <div><div class="txt-muted txt-xs">Advocate</div><div class="txt-bold">${m.adv}</div></div>`;
+  document.getElementById('det-bg').textContent=m.bg;
+  document.getElementById('det-tl-c').innerHTML=`
+    <div class="tl-item past"><div class="tl-date">Filing</div><div class="tl-content">Matter registered</div></div>
+    <div class="tl-item past"><div class="tl-date">First Hearing</div><div class="tl-content">Admission hearing</div></div>
+    <div class="tl-item"><div class="tl-date">${m.nextHearing}</div><div class="tl-content">${m.stage} at ${m.court}</div></div>`;
+  document.getElementById('det-docs-l').innerHTML=DOC_RECENT.slice(0,3).map(d=>`<div class="doc-row"><div class="doc-icon" style="background:${d.bg};color:${d.tc}"><i class="fas ${d.icon}"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:600">${d.name}</div><div class="txt-xs txt-muted">${d.meta}</div></div><span class="badge ${d.tag}">${d.lbl}</span></div>`).join('');
+  document.getElementById('det-tasks-l').innerHTML=TASKS.slice(0,4).map(t=>`<div class="task-row"><div class="task-cb ${t.done?'done':''}">${t.done?'<i class="fas fa-check"></i>':''}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${t.title}</div><div class="txt-xs txt-muted">${t.assign} · ${t.due}</div></div><span class="badge ${SC2[t.done?'Done':t.status]||'b-gr'}">${t.done?'Done':t.status}</span></div>`).join('');
+  switchDTab(document.querySelector('#m-detail .tab-btn'),'det-s');
+  openModal('m-detail');
+}
+
+function addMatter(){
+  const title=document.getElementById('mat-title')?.value||'New Matter';
+  const newM={id:'M-2026-'+String(MATTERS.length+1).padStart(3,'0'),title,client:document.getElementById('mat-client')?.value||CLIENTS[0].name,court:document.getElementById('mat-court')?.value||MASTERS.courts[0],type:document.getElementById('mat-type')?.value||'Litigation',area:document.getElementById('mat-area')?.value||'General',nextHearing:'TBD',adv:document.getElementById('mat-adv')?.value||MASTERS.advocates[0],status:'Active',caseNo:'TBD',stage:'Filing',bg:title};
+  MATTERS.unshift(newM);renderMatters(MATTERS);document.getElementById('d-active').textContent=147+MATTERS.length-10;
+  closeModal('m-addmatter');toast('Matter registered!','g');
+}
+
+// ============================================================
+//  CLIENTS
+// ============================================================
+function renderClients(list){
+  document.getElementById('clients-count').textContent=list.length+' Clients';
+  document.getElementById('clients-tbody').innerHTML=list.map(c=>`
+    <tr>
+      <td><span style="font-family:var(--mono);font-size:11px">${c.id}</span></td>
+      <td><div style="font-weight:700">${c.name}</div><div class="txt-xs txt-muted">${c.email}</div></td>
+      <td><span class="badge b-gr">${c.type}</span></td>
+      <td>${c.mobile}</td>
+      <td style="font-family:var(--mono);font-size:11px">${c.pan||'—'}</td>
+      <td><span class="badge b-g">${c.matters}</span></td>
+      <td><span class="badge ${c.status==='Active'?'b-g':'b-r'}">${c.status}</span></td>
+      <td><button class="btn btn-outline btn-xs" onclick="toast('Client: ${esc(c.name)}','g')">View</button></td>
+    </tr>`).join('');
+}
+function filterClients(f,el){pillActive(el);renderClients(f==='all'?CLIENTS:CLIENTS.filter(c=>c.type===f))}
+function searchClients(q){renderClients(CLIENTS.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.id.toLowerCase().includes(q.toLowerCase())))}
+function addClient(){
+  const name=document.getElementById('cl-name')?.value;if(!name){toast('Enter client name','r');return}
+  const newC={id:'CLT-'+String(CLIENTS.length+1).padStart(3,'0'),name,type:document.getElementById('cl-type')?.value||'Individual',mobile:document.getElementById('cl-mobile')?.value||'',pan:'',gst:'',matters:0,status:'Active',email:document.getElementById('cl-email')?.value||''};
+  CLIENTS.unshift(newC);renderClients(CLIENTS);closeModal('m-addclient');toast('Client added!','g');
+}
+
+// ============================================================
+//  TASKS
+// ============================================================
+function toggleTask(id,el){const t=TASKS.find(x=>x.id===id);if(!t)return;t.done=!t.done;el.classList.toggle('done',t.done);el.innerHTML=t.done?'<i class="fas fa-check"></i>':'';toast(t.done?'Task complete!':'Task reopened','g');renderDashboard()}
+
+const KCOLS=['To Do','In Progress','Under Review','Done'];
+const KCOLS_CLR={'To Do':'var(--txt3)','In Progress':'var(--blue)','Under Review':'var(--acc)','Done':'var(--g1)'};
+function taskCol(t){if(t.done)return'Done';if(t.status==='Overdue'||t.status==='Due Today')return'In Progress';return t.status}
+
+function renderKanban(){
+  const b=document.getElementById('kanban-board');if(!b)return;
+  b.innerHTML=KCOLS.map(col=>{
+    const items=TASKS.filter(t=>taskCol(t)===col);
+    return`<div class="kb-col"><div class="kb-col-hd" style="color:${KCOLS_CLR[col]}">${col}<div class="kb-count">${items.length}</div></div>
+    ${items.map(t=>`<div class="kb-card" style="border-left:3px solid ${t.priority==='Urgent'?'var(--red)':t.priority==='High'?'var(--acc)':'var(--bdr)'}" onclick="toast('Task: ${esc(t.id)}','g')">
+      <div class="kb-card-title">${t.title}</div>
+      <div class="kb-card-meta"><span class="badge ${t.priority==='Urgent'?'b-r':t.priority==='High'?'b-a':'b-gr'}">${t.priority}</span><span>${t.assign.split(' ').slice(-1)[0]}</span><span>${t.due.substring(5)}</span></div>
+    </div>`).join('')}</div>`;
+  }).join('');
+  renderTaskList();
+}
+function renderTaskList(){
+  const tb=document.getElementById('tasks-list-tbody');if(!tb)return;
+  tb.innerHTML=TASKS.map(t=>`<tr>
+    <td><div class="task-cb ${t.done?'done':''}" onclick="toggleTask('${t.id}',this)">${t.done?'<i class="fas fa-check"></i>':''}</div></td>
+    <td><div style="font-weight:600">${t.title}</div><div class="txt-xs txt-muted">${t.type}</div></td>
+    <td style="font-size:11.5px">${t.matter}</td>
+    <td><span class="badge ${t.priority==='Urgent'?'b-r':t.priority==='High'?'b-a':'b-gr'}">${t.priority}</span></td>
+    <td style="font-size:12px">${t.due}</td>
+    <td style="font-size:12px">${t.assign}</td>
+    <td><span class="badge ${SC2[t.done?'Done':t.status]||'b-gr'}">${t.done?'Done':t.status}</span></td>
+  </tr>`).join('');
+}
+function switchTaskView(v,el){pillActive(el);document.getElementById('tv-kanban').style.display=v==='kanban'?'':'none';document.getElementById('tv-list').style.display=v==='list'?'':'none';if(v==='list')renderTaskList()}
+function addTask(){
+  const title=document.getElementById('tk-title')?.value;if(!title){toast('Enter task title','r');return}
+  const newT={id:'TK-'+String(TASKS.length+1).padStart(3,'0'),title,matter:document.getElementById('tk-matter')?.value?.split('–')[0]?.trim()||'—',priority:document.getElementById('tk-priority')?.value||'Medium',due:document.getElementById('tk-due')?.value||'TBD',assign:document.getElementById('tk-assign')?.value||MASTERS.advocates[0],status:'To Do',done:false,type:document.getElementById('tk-type')?.value||'Miscellaneous'};
+  TASKS.unshift(newT);renderKanban();closeModal('m-addtask');toast('Task created!','g');
+}
+
+// ============================================================
+//  FILINGS
+// ============================================================
+function renderFilings(list){
+  document.getElementById('filings-count').textContent=list.length+' Records';
+  document.getElementById('filings-tbody').innerHTML=list.map(f=>`<tr>
+    <td><span style="font-family:var(--mono);font-size:11px">${f.id}</span></td>
+    <td><div style="font-weight:700">${f.doc}</div></td>
+    <td>${f.matter}</td><td>${f.court}</td>
+    <td><strong style="${f.status==='Due Today'?'color:var(--red)':''}">${f.due}</strong></td>
+    <td><span class="badge b-b">${f.stage}</span></td>
+    <td><span class="badge ${SC2[f.status]||'b-gr'}">${f.status}</span></td>
+    <td><button class="btn btn-outline btn-xs" onclick="toast('Filing ${f.id}','g')">View</button></td>
+  </tr>`).join('');
+}
+function filterFilings(f,el){pillActive(el);renderFilings(f==='all'?FILINGS:FILINGS.filter(x=>x.stage===f||x.status===f||x.status.includes(f)))}
+function addFiling(){
+  const doc=document.getElementById('fl-doctype')?.value||MASTERS.docTypes[0];
+  const newF={id:'FL-'+String(FILINGS.length+43),doc,matter:document.getElementById('fl-matter')?.value?.split('–')[0]?.trim()||'—',court:document.getElementById('fl-court')?.value||MASTERS.courts[0],due:document.getElementById('fl-due')?.value||'TBD',stage:'Draft',status:'In Progress'};
+  FILINGS.unshift(newF);renderFilings(FILINGS);closeModal('m-addfiling');toast('Filing created!','g');
+}
+
+// ============================================================
+//  BILLING
+// ============================================================
+function renderBilling(list){
+  document.getElementById('billing-count').textContent=list.length+' Records';
+  document.getElementById('billing-tbody').innerHTML=list.map(b=>`<tr>
+    <td><span style="font-family:var(--mono);font-size:11px">${b.id}</span></td>
+    <td>${b.client}</td><td>${b.desc}</td>
+    <td><strong>₹${b.amount.toLocaleString('en-IN')}</strong></td>
+    <td>${b.date}</td>
+    <td><span class="badge ${b.status==='Paid'?'b-g':b.status==='Overdue'?'b-r':'b-a'}">${b.status}</span></td>
+    <td><button class="btn btn-outline btn-xs" onclick="toast('Invoice ${b.id}','g')">View</button></td>
+  </tr>`).join('');
+}
+function filterBilling(f,el){pillActive(el);renderBilling(f==='all'?BILLING:BILLING.filter(b=>b.status===f))}
+function addInvoice(){
+  const amt=document.getElementById('inv-amount')?.value;if(!amt){toast('Enter amount','r');return}
+  const newI={id:'INV-2026-'+String(BILLING.length+42),client:document.getElementById('inv-client')?.value||CLIENTS[0].name,desc:'Professional services',amount:parseInt(amt),date:document.getElementById('inv-date')?.value||today(),status:'Unpaid'};
+  BILLING.unshift(newI);renderBilling(BILLING);closeModal('m-invoice');toast('Invoice generated!','g');
+}
+
+// ============================================================
+//  COURT TRACKER
+// ============================================================
+function initTracker(){fillSel('tracker-court',MASTERS.courts)}
+function doTrack(){
+  const q=document.getElementById('tracker-input').value;if(!q){toast('Enter case number','r');return}
+  const m=MATTERS.find(x=>x.caseNo&&x.caseNo.toLowerCase().includes(q.toLowerCase()))||MATTERS[0];
+  const el=document.getElementById('tracker-result');el.style.display='block';
+  el.innerHTML=`<div class="card"><div class="card-hd"><i class="fas fa-check-circle" style="color:var(--g1)"></i><span class="card-title">Case Found — ${m.caseNo}</span><span class="badge b-g">Live Data</span></div>
+  <div class="card-body">
+    <div class="g2 mb16">
+      <div class="g2">
+        <div style="background:var(--bgs);border-radius:8px;padding:11px"><div class="sc-lbl">Case No.</div><div style="font-family:var(--mono);font-weight:800;font-size:12px">${m.caseNo}</div></div>
+        <div style="background:var(--bgs);border-radius:8px;padding:11px"><div class="sc-lbl">Court</div><div style="font-weight:800;font-size:12px">${m.court}</div></div>
+        <div style="background:var(--bgs);border-radius:8px;padding:11px"><div class="sc-lbl">Next Hearing</div><div style="font-weight:800;font-size:12px;color:var(--red)">${m.nextHearing}</div></div>
+        <div style="background:var(--bgs);border-radius:8px;padding:11px"><div class="sc-lbl">Stage</div><span class="badge ${SG[m.stage]||'b-gr'}">${m.stage}</span></div>
+      </div>
+      <div style="background:var(--bgs);border-radius:8px;padding:13px"><div class="sc-lbl mb12">Parties</div><div class="mb12"><div class="txt-muted txt-xs">Petitioner</div><div class="txt-bold">${m.client}</div></div><div><div class="txt-muted txt-xs">Respondent</div><div class="txt-bold">Opposite Party</div></div></div>
+    </div>
+    <div class="divider-label">Hearing History</div>
+    <table><thead><tr><th>Date</th><th>Stage</th><th>Order / Remarks</th><th>Next Date</th></tr></thead>
+    <tbody>
+      <tr><td>Mar 2024</td><td><span class="badge b-b">Filed</span></td><td>Admission Notice Issued</td><td>Jul 2024</td></tr>
+      <tr><td>Jul 2024</td><td><span class="badge b-a">Arguments</span></td><td>Part-heard, adjourned</td><td>Nov 2024</td></tr>
+      <tr><td>Mar 2025</td><td><span class="badge b-r">Urgent</span></td><td>Interim stay granted</td><td>${m.nextHearing}</td></tr>
+      <tr><td><strong style="color:var(--g1)">${m.nextHearing}</strong></td><td><span class="badge b-r">${m.stage}</span></td><td>Scheduled</td><td>—</td></tr>
+    </tbody></table>
+  </div></div>`;
+  toast('Case data fetched!','g');
+}
+
+// ============================================================
+//  DOCUMENTS
+// ============================================================
+function renderDocs(){
+  document.getElementById('doc-folders').innerHTML=DOC_FOLDERS.map(f=>`<div class="doc-row" onclick="toast('Opening: ${esc(f.name)}','g')"><div class="doc-icon" style="background:${f.bg};color:${f.tc}"><i class="fas fa-folder"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:700">${f.name}</div><div class="txt-xs txt-muted">${f.count} docs · ${f.upd}</div></div></div>`).join('');
+  document.getElementById('doc-recent').innerHTML=DOC_RECENT.map(d=>`<div class="doc-row" onclick="toast('Opening: ${esc(d.name)}','g')"><div class="doc-icon" style="background:${d.bg};color:${d.tc}"><i class="fas ${d.icon}"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:600">${d.name}</div><div class="txt-xs txt-muted">${d.meta}</div></div><span class="badge ${d.tag}">${d.lbl}</span></div>`).join('');
+}
+
+// ============================================================
+//  KNOWLEDGE BASE
+// ============================================================
+function renderKB(){
+  document.getElementById('kb-j').innerHTML=KB_JUDGMENTS.map(j=>`<div class="doc-row"><div class="doc-icon" style="background:var(--red-soft);color:var(--red)"><i class="fas fa-gavel"></i></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${j.title}</div><div class="txt-xs txt-muted">${j.court}</div></div><span class="badge ${j.tag}">${j.lbl}</span></div>`).join('');
+  document.getElementById('kb-t').innerHTML=MASTERS.docTypes.slice(0,6).map(t=>`<div class="doc-row" onclick="toast('Template: ${esc(t)}','g')"><div class="doc-icon" style="background:var(--g-soft);color:var(--g1)"><i class="fas fa-file-word"></i></div><div><div style="font-size:12.5px;font-weight:700">${t} Template</div><div class="txt-xs txt-muted">Standard format · Updated Jun 2026</div></div><span class="badge b-gr">Template</span></div>`).join('');
+  document.getElementById('kb-a').innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3)"><i class="fas fa-newspaper" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>No articles added yet</div>';
+}
+function switchKBTab(btn,id){document.querySelectorAll('#kb-tabs .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');['kb-j','kb-t','kb-a'].forEach(x=>{const el=document.getElementById(x);if(el)el.style.display=x===id?'':'none'})}
+
+// ============================================================
+//  AI CHAT
+// ============================================================
+let chatInit=false;
+const AI_REPLIES={
+  'sharma':'<strong>Sharma & Sons v. UoI (WP-C 1247/2024)</strong> is before SC Bench 4 today at 10:30 AM. Interim stay granted 20 Mar 2025. Affidavit FL-0041 due today for approval. Adv. Amit Sharma appears.',
+  'hearing':'<strong>Today\'s '+HEARINGS.length+' hearings:</strong><br>'+HEARINGS.slice(0,4).map((h,i)=>`${i+1}. ${h.court} — ${h.title} · ${h.time}`).join('<br>'),
+  'filing':'<strong>2 filings due today:</strong><br>1. FL-0041 — Affidavit (Draft · needs approval)<br>2. FL-0042 — Written Submissions (Approved · ready)',
+  'task':'<strong>'+TASKS.filter(t=>!t.done).length+' open tasks.</strong> Overdue: Prepare Affidavit (Rahul), Written Submissions (Priya).',
+  'nclt':'NCLT CP/887/2025 — XYZ Corp. Client: Bank of Maharashtra. Today 2:00 PM Admission hearing. Annexures A-G due Jun 18.',
+  'client':'<strong>'+CLIENTS.length+' clients</strong> registered. Active: '+CLIENTS.filter(c=>c.status==='Active').length+'. Top: '+CLIENTS.sort((a,b)=>b.matters-a.matters)[0].name+' ('+CLIENTS[0].matters+' matters).',
+  'billing':'Outstanding: <strong>₹'+BILLING.filter(b=>b.status!=='Paid').reduce((s,b)=>s+b.amount,0).toLocaleString('en-IN')+'</strong>. Overdue: '+BILLING.filter(b=>b.status==='Overdue').length+' invoices.',
+  'summarize':'Please specify: "Summarize M-2024-001" or "Summarize Sharma" to get case summary.',
+};
+function initChat(){if(chatInit)return;chatInit=true;const m=document.getElementById('chat-msgs');if(m)m.innerHTML=`<div class="fxc gap8"><div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0"><i class="fas fa-robot"></i></div><div style="background:var(--bgs);border:1px solid var(--bdr);border-radius:2px 12px 12px 12px;padding:10px 14px;max-width:72%;font-size:13px;line-height:1.6"><strong>Namaste!</strong> I'm your TUBA Legal AI. Ask about matters, hearings, tasks, billing, or research.<br><br>Try: <em>"Show hearings today"</em> · <em>"Summarize Sharma"</em> · <em>"Filing status"</em></div></div>`}
+function sendChat(){
+  const inp=document.getElementById('chat-input');const q=inp.value.trim();if(!q)return;
+  const m=document.getElementById('chat-msgs');
+  m.innerHTML+=`<div class="fxc gap8" style="flex-direction:row-reverse"><div style="width:30px;height:30px;border-radius:8px;background:var(--bgs);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt3);flex-shrink:0"><i class="fas fa-user"></i></div><div style="background:var(--g1);border-radius:12px 2px 12px 12px;padding:10px 14px;max-width:72%;font-size:13px;line-height:1.6;color:#fff">${esc(q)}</div></div>`;
+  inp.value='';m.scrollTop=m.scrollHeight;
+  const tid='t'+Date.now();
+  m.innerHTML+=`<div id="${tid}" class="fxc gap8"><div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0"><i class="fas fa-robot"></i></div><div style="background:var(--bgs);border:1px solid var(--bdr);border-radius:2px 12px 12px 12px;padding:10px 14px;font-size:13px;color:var(--txt3)">Thinking…</div></div>`;
+  m.scrollTop=m.scrollHeight;
+  setTimeout(()=>{
+    const el=document.getElementById(tid);if(!el)return;
+    const lq=q.toLowerCase();let reply='Ask about hearings, matters, tasks, billing, or clients. Try: "What hearings today?" or "Billing status".';
+    for(const[k,a]of Object.entries(AI_REPLIES)){if(lq.includes(k)){reply=a;break}}
+    el.querySelector('div:last-child').innerHTML=reply;m.scrollTop=m.scrollHeight;
+  },900);
+}
+
+// ============================================================
+//  DIARY
+// ============================================================
+function renderDiary(){
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  document.getElementById('cal-hdrs').innerHTML=days.map(d=>`<div class="cal-hdr">${d}</div>`).join('');
+  const evs=[1,3,5,6,9,10,11,13,14,16,17,18,19,23,25,27];
+  let cells='<div class="cal-day oth">26</div><div class="cal-day oth">27</div><div class="cal-day oth">28</div><div class="cal-day oth">29</div><div class="cal-day oth">30</div><div class="cal-day oth">31</div>';
+  for(let d=1;d<=30;d++){const cls=d===17?'today has-ev':evs.includes(d)?'has-ev':'';cells+=`<div class="cal-day ${cls}" onclick="toast('Jun ${d} — ${evs.includes(d)&&d!==17?HEARINGS[d%HEARINGS.length].title:'No events'}','g')">${d}</div>`}
+  cells+='<div class="cal-day oth">1</div><div class="cal-day oth">2</div><div class="cal-day oth">3</div><div class="cal-day oth">4</div><div class="cal-day oth">5</div><div class="cal-day oth">6</div>';
+  document.getElementById('cal-days').innerHTML=cells;
+  document.getElementById('diary-tl').innerHTML=`
+    <div class="tl-item urgent"><div class="tl-date">9:00 AM</div><div class="tl-content">SC WP 1247 Brief Review</div><div class="tl-sub">Chambers · before 10:30 hearing</div></div>
+    <div class="tl-item"><div class="tl-date">10:30 AM — SC Hearing</div><div class="tl-content">Sharma & Sons v. UoI · Bench 4</div><div class="tl-sub">Final Arguments</div></div>
+    <div class="tl-item"><div class="tl-date">12:30 PM — Client Call</div><div class="tl-content">Bank of Maharashtra</div><div class="tl-sub">NCLT recovery strategy</div></div>
+    <div class="tl-item urgent"><div class="tl-date">2:00 PM — NCLT Hearing</div><div class="tl-content">XYZ Corp CP/887</div><div class="tl-sub">Admission hearing</div></div>
+    <div class="tl-item"><div class="tl-date">4:00 PM — Drafting</div><div class="tl-content">ITAT Written Submissions</div><div class="tl-sub">For Jun 18 hearing</div></div>`;
+}
+
+// ============================================================
+//  NOTIFICATIONS
+// ============================================================
+function renderNotifications(){
+  document.getElementById('notif-list').innerHTML=NOTIFS.map(n=>`<div class="notif-row" onclick="closeModal('m-notif')"><div style="width:8px;height:8px;border-radius:50%;background:${n.color};flex-shrink:0;margin-top:5px"></div><div style="flex:1"><div style="font-size:13px;font-weight:700">${n.title}</div><div class="txt-xs txt-muted">${n.sub}</div></div></div>`).join('');
+}
+
+// ============================================================
+//  USER MANAGEMENT
+// ============================================================
+function renderUserMgmt(){renderUsersTable(USERS);renderPermMatrix('admin');renderAuditLog();renderSessions();renderIPList()}
+
+function renderUsersTable(list){
+  const el=document.getElementById('users-tbody');if(!el)return;
+  document.getElementById('um-total').textContent=list.length;
+  el.innerHTML=list.map(u=>`<tr>
+    <td><input type="checkbox" class="ucb" style="accent-color:var(--g2)"></td>
+    <td><div class="fxc gap8"><div class="avatar" style="width:32px;height:32px;font-size:11px;border-radius:8px;background:${u.bg}">${u.av}</div><div><div style="font-weight:700;font-size:12.5px">${u.name}</div><div class="txt-xs txt-muted">${u.email}</div></div></div></td>
+    <td><span class="badge ${ROLE_CLS[u.role]||'b-gr'}">${ROLE_LABELS[u.role]||u.role}</span></td>
+    <td style="font-size:12px">${u.dept}</td>
+    <td style="font-size:12px">${u.matters}</td>
+    <td style="font-size:12px;color:var(--txt3)">${u.lastLogin}</td>
+    <td>${u.mfa?'<span class="badge b-g"><i class="fas fa-shield-alt"></i> On</span>':'<span class="badge b-r"><i class="fas fa-shield-alt"></i> Off</span>'}</td>
+    <td><span class="fxc gap4"><span class="s-dot ${STATUS_CLS[u.status]||'s-off'}"></span>${STATUS_LBL[u.status]||u.status}</span></td>
+    <td><div class="fxc gap4">
+      <button class="btn btn-outline btn-xs" onclick="openEditUser(${u.id})"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-xs" style="color:var(--red);border:1px solid var(--red);background:transparent;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:11px" onclick="if(confirm('Suspend ${esc(u.name)}?'))toast('User suspended','r')"><i class="fas fa-ban"></i></button>
+    </div></td>
+  </tr>`).join('');
+}
+function filterUsers(f,el){pillActive(el);renderUsersTable(f==='all'?USERS:USERS.filter(u=>u.role===f))}
+function searchUsers(q){renderUsersTable(USERS.filter(u=>u.name.toLowerCase().includes(q.toLowerCase())||u.email.toLowerCase().includes(q.toLowerCase())))}
+function checkAll(cb,cls){document.querySelectorAll('.'+cls).forEach(c=>c.checked=cb.checked)}
+
+function renderPermMatrix(role){
+  const gp=ROLE_PERMS[role]||[];
+  const el=document.getElementById('perm-matrix');if(!el)return;
+  el.innerHTML=`<div class="perm-grid">${ALL_PERMS.map(p=>{const has=gp.includes(p.k);return`<div class="perm-item ${has?'on':''}"><i class="fas ${has?'fa-check-circle':'fa-times-circle'}" style="color:${has?'var(--g2)':'var(--txt3)'};font-size:14px;margin-top:1px;flex-shrink:0"></i><div><div class="perm-label">${p.l}</div><div class="perm-sub">${p.s}</div></div></div>`}).join('')}</div>`;
+}
+function renderAuditLog(){
+  const el=document.getElementById('audit-log');if(!el)return;
+  el.innerHTML=AUDIT_LOG.map(e=>`<div class="audit-row"><div style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0" class="badge ${e.cls}"><i class="fas ${e.ico}"></i></div><div style="flex:1"><div style="font-weight:600">${e.user} — ${e.action}</div><div class="txt-xs txt-muted">${e.time}</div></div><span class="badge ${e.cls}">${e.lbl}</span></div>`).join('');
+}
+function renderSessions(){
+  const el=document.getElementById('active-sessions');if(!el)return;
+  el.innerHTML=SESSIONS.map(s=>`<div class="sess-card"><div style="flex:1"><div style="font-size:13px;font-weight:700">${s.user} ${s.current?'<span class="badge b-g">You</span>':''}</div><div class="txt-xs txt-muted">${s.device} · ${s.ip} · ${s.loc}</div><div class="txt-xs txt-muted">Started: ${s.started}</div></div>${!s.current?`<button class="btn btn-xs" style="color:var(--red);border:1px solid var(--red);background:transparent;border-radius:6px;cursor:pointer" onclick="this.closest('.sess-card').remove();toast('Session killed','r')"><i class="fas fa-times"></i> Kill</button>`:'<span class="txt-xs txt-muted">Current</span>'}</div>`).join('');
+}
+function renderIPList(){
+  const ips=[{ip:'103.21.244.0/22',lbl:'Office LAN',blocked:false},{ip:'49.248.8.100/32',lbl:'Sr. Adv. Home',blocked:false},{ip:'185.234.218.0/24',lbl:'Blocked',blocked:true}];
+  const el=document.getElementById('ip-list');if(!el)return;
+  el.innerHTML=ips.map(ip=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:7px;background:${ip.blocked?'var(--red-soft)':'var(--bgs)'};border:1px solid ${ip.blocked?'rgba(220,38,38,.15)':'var(--bdr)'}"><i class="fas ${ip.blocked?'fa-ban':'fa-check-circle'}" style="color:${ip.blocked?'var(--red)':'var(--g2)'};font-size:13px"></i><span style="font-family:var(--mono);font-size:12px;flex:1">${ip.ip}</span><span class="txt-xs txt-muted">${ip.lbl}</span><button class="btn btn-xs" style="color:var(--red);border:none;background:transparent;cursor:pointer;font-size:11px" onclick="this.closest('div').remove();toast('IP removed','r')"><i class="fas fa-trash"></i></button></div>`).join('');
+}
+
+function openEditUser(id){
+  const u=USERS.find(x=>x.id===id);if(!u)return;
+  document.getElementById('edit-user-title').textContent='Edit — '+u.name;
+  document.getElementById('eu-av').style.background=u.bg;document.getElementById('eu-av').textContent=u.av;
+  document.getElementById('eu-name-d').textContent=u.name;document.getElementById('eu-role-d').textContent=ROLE_LABELS[u.role]+' · '+u.email;
+  document.getElementById('eu-name').value=u.name;document.getElementById('eu-email').value=u.email;document.getElementById('eu-mobile').value=u.mobile||'';document.getElementById('eu-role').value=u.role;document.getElementById('eu-status').value=u.status==='inactive'?'Deactivated':'Active';
+  fillSel('eu-dept',MASTERS.departments);document.getElementById('eu-dept').value=u.dept||MASTERS.departments[0];
+  const gp=ROLE_PERMS[u.role]||[];
+  document.getElementById('eu-perm-grid').innerHTML=ALL_PERMS.map(p=>{const has=gp.includes(p.k);return`<label class="perm-item ${has?'on':''}" onclick="this.classList.toggle('on')"><input type="checkbox" ${has?'checked':''} style="accent-color:var(--g2);flex-shrink:0"><div><div class="perm-label">${p.l}</div><div class="perm-sub">${p.s}</div></div></label>`}).join('');
+  const sess=SESSIONS.filter(s=>s.user===u.name);
+  document.getElementById('eu-sess-list').innerHTML=sess.length?sess.map(s=>`<div style="background:var(--bgs);border-radius:8px;padding:10px;margin-bottom:7px"><div style="font-size:13px;font-weight:700">${s.device}</div><div class="txt-xs txt-muted">${s.ip} · ${s.loc} · ${s.started}</div></div>`).join(''):'<div class="txt-muted txt-sm" style="padding:16px 0;text-align:center">No active sessions</div>';
+  const acts=AUDIT_LOG.filter(e=>e.user===u.name);
+  document.getElementById('eu-act-list').innerHTML=acts.length?acts.map(e=>`<div class="audit-row"><div style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px" class="badge ${e.cls}"><i class="fas ${e.ico}"></i></div><div><div style="font-size:12px;font-weight:600">${e.action}</div><div class="txt-xs txt-muted">${e.time}</div></div></div>`).join(''):'<div class="txt-muted txt-sm" style="padding:16px 0;text-align:center">No activity</div>';
+  switchETab(document.querySelector('#eu-tabs .tab-btn'),'eu-profile');
+  openModal('m-edituser');
+}
+function switchETab(btn,id){document.querySelectorAll('#eu-tabs .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');['eu-profile','eu-perms','eu-sessions','eu-activity'].forEach(x=>{const el=document.getElementById(x);if(el)el.style.display=x===id?'':'none'})}
+function saveUserEdit(){const n=document.getElementById('eu-name').value;toast('User updated: '+n,'g');closeModal('m-edituser')}
+function suspendUserModal(){if(confirm('Suspend this user? They will be logged out immediately.')){closeModal('m-edituser');toast('User suspended and logged out','r')}}
+function sendInvite(){const n=document.getElementById('inv-name')?.value,e=document.getElementById('inv-email')?.value;if(!n||!e){toast('Fill name and email','r');return}toast('Invite sent to '+e,'g');closeModal('m-invite')}
+function selRole(el){el.closest('.role-opts').querySelectorAll('.role-opt').forEach(o=>o.classList.remove('active'));el.classList.add('active')}
+
+// ============================================================
+//  MASTERS
+// ============================================================
+function renderMasters(){
+  const el=document.getElementById('masters-grid');if(!el)return;
+  el.innerHTML=MASTER_CARDS.map(c=>`<div class="master-card" onclick="openMaster('${c.key}')"><div class="master-card-icon" style="background:${c.bg};color:${c.tc}"><i class="fas ${c.icon}"></i></div><div class="master-card-title">${c.title}</div><div class="master-card-count">${MASTERS[c.key]?.length||0} values</div></div>`).join('');
+}
+function openMaster(key){
+  currentMasterKey=key;
+  const card=MASTER_CARDS.find(c=>c.key===key)||{title:key};
+  document.getElementById('master-title').textContent='Manage — '+card.title;
+  renderMasterList();
+  document.getElementById('m-master').classList.add('open');
+}
+function renderMasterList(){
+  const items=MASTERS[currentMasterKey]||[];
+  document.getElementById('master-list').innerHTML=items.length?items.map((item,i)=>`<div class="master-list-item">
+    <div style="width:22px;height:22px;border-radius:5px;background:var(--bgs);border:1px solid var(--bdr);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--txt3);flex-shrink:0">${i+1}</div>
+    <div contenteditable="true" style="flex:1;font-size:13px;font-weight:600;outline:none;padding:2px 4px;border-radius:4px" onblur="editMasterItem(${i},this.textContent.trim())">${esc(item)}</div>
+    <div class="fxc gap5">
+      <button class="btn btn-xs" style="color:var(--txt3);border:none;background:transparent;cursor:pointer" onclick="moveMasterItem(${i},-1)"><i class="fas fa-arrow-up"></i></button>
+      <button class="btn btn-xs" style="color:var(--txt3);border:none;background:transparent;cursor:pointer" onclick="moveMasterItem(${i},1)"><i class="fas fa-arrow-down"></i></button>
+      <button class="btn btn-xs" style="color:var(--red);border:none;background:transparent;cursor:pointer" onclick="deleteMasterItem(${i})"><i class="fas fa-trash"></i></button>
+    </div>
+  </div>`).join(''):'<div class="txt-muted txt-sm" style="padding:20px;text-align:center">No items yet. Add one above.</div>';
+}
+function addMasterItem(){
+  const v=document.getElementById('master-new')?.value?.trim();if(!v){toast('Enter a value','r');return}
+  if(!MASTERS[currentMasterKey])MASTERS[currentMasterKey]=[];
+  MASTERS[currentMasterKey].push(v);document.getElementById('master-new').value='';
+  renderMasterList();renderMasters();toast('Item added!','g');
+}
+function deleteMasterItem(i){if(confirm('Delete this item?')){MASTERS[currentMasterKey].splice(i,1);renderMasterList();renderMasters();toast('Deleted','r')}}
+function editMasterItem(i,v){if(v&&MASTERS[currentMasterKey])MASTERS[currentMasterKey][i]=v}
+function moveMasterItem(i,dir){const a=MASTERS[currentMasterKey];const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];renderMasterList()}
+function saveMaster(){renderMasters();closeModal('m-master');toast('Master saved!','g')}
+
+// ============================================================
+//  MODAL TAB HELPERS
+// ============================================================
+function switchDTab(btn,id){const p=btn.closest('.tab-row');p.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');['det-s','det-tl','det-d','det-t'].forEach(x=>{const el=document.getElementById(x);if(el)el.style.display=x===id?'':'none'})}
+function pillActive(el){el.closest('.pills').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));el.classList.add('active')}
+
+// ============================================================
+//  GLOBAL SEARCH
+// ============================================================
+function globalSearch(q){
+  if(q.length<2)return;
+  const pg=document.querySelector('.page.active');if(!pg)return;
+  const id=pg.id.replace('page-','');
+  if(id==='matters')searchMatters(q);
+  if(id==='clients')searchClients(q);
+  if(id==='billing')renderBilling(BILLING.filter(b=>b.client.toLowerCase().includes(q.toLowerCase())||b.desc.toLowerCase().includes(q.toLowerCase())));
+  if(id==='usermgmt')searchUsers(q);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded',()=>{renderDashboard()});
+</script>
+</body>
+</html>

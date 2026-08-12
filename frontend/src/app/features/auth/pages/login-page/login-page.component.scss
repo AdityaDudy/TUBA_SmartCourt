@@ -1,0 +1,104 @@
+:host { display: block; }
+
+#login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; font-family: var(--font);
+}
+.l-left {
+  width: 420px; flex-shrink: 0;
+  background: #eef4fb;
+  display: flex; flex-direction: column;
+  padding: 36px 42px; overflow-y: auto;
+  box-shadow: 4px 0 30px rgba(0,0,0,.07);
+}
+.l-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 34px; }
+.l-brand-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--acc), #b45309);
+  border-radius: 11px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #fff; font-weight: 900;
+}
+.l-brand-name { font-size: 17px; font-weight: 900; color: var(--txt); letter-spacing: -.5px; }
+.l-brand-sub  { font-size: 10px; color: var(--txt3); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+.l-h  { font-size: 22px; font-weight: 900; color: var(--txt); margin-bottom: 5px; letter-spacing: -.5px; }
+.l-s  { font-size: 13px; color: var(--txt3); margin-bottom: 26px; line-height: 1.6; }
+.l-fg { margin-bottom: 14px; }
+.l-lbl { display: block; font-size: 11px; font-weight: 800; color: var(--txt2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+.l-wrap { position: relative; }
+.l-inp {
+  width: 100%; padding: 10px 13px 10px 39px;
+  border: 1.5px solid #c8d9ec; border-radius: 9px;
+  font-size: 13.5px; font-family: var(--font); color: var(--txt);
+  background: #fff; outline: none; transition: all .15s;
+}
+.l-inp:focus { border-color: var(--g2); box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
+.l-ic  { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--txt3); font-size: 13px; pointer-events: none; }
+.l-tog { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--txt3); font-size: 13px; cursor: pointer; }
+.l-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.l-chk { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; color: var(--txt2); }
+.l-chk input { accent-color: var(--g2); width: 14px; height: 14px; }
+.l-link { font-size: 12.5px; color: var(--g1); text-decoration: none; font-weight: 700; }
+.l-btn {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, var(--g1), var(--g2));
+  color: #fff; border: none; border-radius: 9px;
+  font-size: 14px; font-weight: 800; cursor: pointer;
+  font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 9px;
+  transition: all .2s; box-shadow: 0 3px 10px rgba(13,102,55,.3);
+}
+.l-btn:hover { opacity: .9; transform: translateY(-1px); }
+.l-btn:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+.l-back {
+  background: none; border: none; cursor: pointer;
+  color: var(--g1); font-size: 12.5px; font-weight: 700;
+  margin-bottom: 18px; padding: 0; display: flex; align-items: center; gap: 6px;
+}
+.l-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--txt3); font-size: 11.5px; }
+.l-divider::before, .l-divider::after { content: ''; flex: 1; height: 1px; background: var(--bdr); }
+.demo-pills { display: flex; flex-direction: column; gap: 7px; }
+.demo-pill {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 9px; border: 1px solid #c8d9ec;
+  cursor: pointer; background: #fff; transition: all .15s;
+}
+.demo-pill:hover { border-color: var(--g2); background: var(--g-soft); transform: translateX(3px); }
+.demo-pill-av { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.demo-pill-name { font-size: 12px; font-weight: 800; color: var(--txt); }
+.demo-pill-role { font-size: 10.5px; color: var(--txt3); }
+.l-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid #c8d9ec; font-size: 11px; color: var(--txt3); text-align: center; line-height: 1.7; }
+.l-footer a { color: var(--g1); text-decoration: none; font-weight: 600; }
+.auth-error {
+  background: var(--red-soft); color: var(--red);
+  border: 1px solid rgba(220,38,38,.2);
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 12.5px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+// Right panel
+.l-right {
+  flex: 1;
+  background: linear-gradient(140deg,#052e16 0%,#0d6637 50%,#166534 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px; position: relative; overflow: hidden;
+}
+.l-right::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 30% 50%, rgba(255,255,255,.04) 0%, transparent 60%);
+}
+.lr-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 100px; padding: 5px 14px; margin-bottom: 22px;
+}
+.lr-tag span { font-size: 11.5px; font-weight: 800; color: rgba(255,255,255,.9); text-transform: uppercase; letter-spacing: .8px; }
+.lr-h2 { font-size: 28px; font-weight: 900; color: #fff; margin-bottom: 12px; letter-spacing: -.6px; line-height: 1.2; text-align: center; }
+.lr-p  { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.7; margin-bottom: 28px; text-align: center; }
+.lr-features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+.lr-fc { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 14px 13px; }
+.lr-fc i { font-size: 18px; color: #fde68a; margin-bottom: 7px; display: block; }
+.lr-fc .fc-t { font-size: 12.5px; font-weight: 800; color: #fff; margin-bottom: 2px; }
+.lr-fc .fc-s { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.4; }
+.lr-stats { display: flex; gap: 24px; justify-content: center; }
+.lr-stat .ls-v { font-size: 24px; font-weight: 900; color: #fde68a; text-align: center; }
+.lr-stat .ls-l { font-size: 10.5px; color: rgba(255,255,255,.42); text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; text-align: center; }

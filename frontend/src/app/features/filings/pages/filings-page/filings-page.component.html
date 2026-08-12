@@ -1,0 +1,687 @@
+<div class="page" id="filings-page">
+  <!-- ── PAGE HEADER ─────────────────────────────────────────── -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title"><i class="fas fa-file-arrow-up"></i> Filings</h1>
+      <p class="pg-sub">{{ filtered.length }} filings tracked</p>
+    </div>
+    <div class="pg-actions">
+      <app-search-input placeholder="Search filings…" [value]="search()" (valueChange)="search.set($event)"></app-search-input>
+      <!-- View Toggle -->
+      <div class="view-toggles">
+        <button [class.active]="viewMode() === 'table'" (click)="viewMode.set('table')">
+          <i class="fas fa-table"></i> Table
+        </button>
+        <button [class.active]="viewMode() === 'kanban'" (click)="viewMode.set('kanban')">
+          <i class="fas fa-columns"></i> Kanban
+        </button>
+      </div>
+      <app-button variant="primary" icon="plus" (onClick)="openNewFilingModal()">New Filing</app-button>
+    </div>
+  </div>
+
+  <!-- ── SOURCE & STAGE FILTER BARS ─────────────────────────────────────────── -->
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+    <!-- Category Filter Pill Bar -->
+    <div class="view-toggles" style="background: var(--card); border-radius: 8px;">
+      <button [class.active]="taskSubmissionsFilter() === 'all'" (click)="taskSubmissionsFilter.set('all'); currentPage.set(1)">
+        <i class="fas fa-layer-group"></i> All Records
+      </button>
+      <button [class.active]="taskSubmissionsFilter() === 'filings'" (click)="taskSubmissionsFilter.set('filings'); currentPage.set(1)">
+        <i class="fas fa-file-invoice"></i> Court Filings Only
+      </button>
+      <button [class.active]="taskSubmissionsFilter() === 'tasks'" (click)="taskSubmissionsFilter.set('tasks'); currentPage.set(1)">
+        <i class="fas fa-tasks"></i> Task Submissions Only
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STAGE FILTER TABS ─────────────────────────────────────────── -->
+  <app-filter-tabs [options]="filters()" [active]="filter()" (activeChange)="filter.set($event); currentPage.set(1)"></app-filter-tabs>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  TABLE VIEW                                               -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!--  TABLE VIEW                                               -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (viewMode() === 'table') {
+  <div class="card" style="padding: 0; overflow: hidden;">
+
+    @if (loading()) {
+    <app-skeleton type="table" [rows]="5" [cols]="8"></app-skeleton>
+    } @else {
+    <div class="tbl-wrap" style="border: none; border-radius: 0;">
+      <table class="data-table" style="margin: 0; width: 100%; table-layout: auto;">
+        <thead>
+          <tr>
+            <th style="width: 22%; min-width: 180px; padding: 12px 14px;">Matter</th>
+            <th style="width: 28%; min-width: 220px; padding: 12px 14px;">Title &amp; Info</th>
+            <th style="width: 15%; min-width: 130px; padding: 12px 14px;">Court</th>
+            <th style="width: 15%; min-width: 130px; padding: 12px 14px;">Progress</th>
+            <th style="width: 10%; min-width: 95px; padding: 12px 14px;">Due Date</th>
+            <th style="width: 10%; min-width: 95px; padding: 12px 14px;">Filed Date</th>
+            <th style="width: 8%; min-width: 85px; padding: 12px 14px;">Stage</th>
+            <th style="text-align: right; width: 7%; min-width: 90px; padding: 12px 14px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of paginatedFilings; track f.id) {
+          <tr class="tr-hover" [class.row-task-submission]="isTaskSubmission(f)" (click)="openDrawer(f)" style="cursor: pointer;">
+            <td style="padding: 12px 14px; vertical-align: top;">
+              <div style="font-weight: 700; color: var(--txt); font-size: 12.5px; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4;">
+                <i class="fas fa-folder" style="color: var(--g1); font-size: 12px; margin-top: 2px; flex-shrink: 0;"></i>
+                <span>{{ f.matterTitle || 'Unlinked Filings' }}</span>
+              </div>
+            </td>
+            <td style="padding: 12px 14px; vertical-align: top;">
+              <div style="font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 6px; line-height: 1.4; word-break: break-word;">
+                @if (isTaskSubmission(f)) {
+                <span class="chip-task" style="flex-shrink: 0;"><i class="fas fa-paperclip"></i> Task</span>
+                }
+                <span>{{ displayTitle(f) }}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--txt3); margin-top: 3px;">{{ f.filingType }} • {{ f.advocate }}</div>
+              @if (isTaskSubmission(f) && !f.matterId) {
+              <div style="font-size: 11px; color: #f59e0b; margin-top: 3px;"><i class="fas fa-exclamation-triangle"></i>
+                Not linked to a matter</div>
+              }
+            </td>
+            <td style="font-size: 12px; padding: 12px 14px; vertical-align: top; color: var(--txt2);">{{ f.court || '—' }}</td>
+            <td style="padding: 12px 14px; vertical-align: top;">
+              <!-- Stage Progress Stepper -->
+              <div class="stage-stepper">
+                @for (s of STAGE_ORDER(); track s; let i = $index) {
+                <div class="stepper-dot" [class.filled]="i <= getStepperIndex(f.stage)"
+                  [class.current]="i === getStepperIndex(f.stage)" [title]="s"></div>
+                @if (i < STAGE_ORDER().length - 1) {
+                <div class="stepper-line" [class.filled]="i < getStepperIndex(f.stage)"></div>
+                }
+                }
+              </div>
+              <div style="font-size: 10px; font-weight: 700; color: var(--txt2); margin-top: 4px; letter-spacing: 0.2px;">
+                {{ f.stage || 'Draft' }}
+              </div>
+            </td>
+            <td style="padding: 12px 14px; vertical-align: top;">
+              <div [class]="dueDateClass(f)" style="font-weight: 600; font-size: 12.5px;">{{ f.dueDate || '—' }}</div>
+              @if (dueDateLabel(f)) {
+              <div [class]="dueDateClass(f)" style="font-size: 10px; font-weight: 700; margin-top: 2px;">{{ dueDateLabel(f) }}</div>
+              }
+            </td>
+            <td style="font-size: 12px; padding: 12px 14px; vertical-align: top; color: var(--txt3);">{{ f.filedDate || '—' }}</td>
+            <td style="padding: 12px 14px; vertical-align: top;">
+              <app-status-badge [status]="f.stage || 'Draft'"></app-status-badge>
+            </td>
+            <td style="text-align: right;" (click)="$event.stopPropagation()">
+              <div style="display: inline-flex; gap: 6px; align-items: center;">
+                @if (f.stage !== 'Filed' && f.stage !== 'Returned') {
+                <button class="btn-xs"
+                  style="background: var(--g-soft); border: 1px solid var(--bdr); color: var(--g1); font-size: 11px; font-weight: 700;"
+                  (click)="moveToNextStage(f, $event)" title="Move to next stage">
+                  <i class="fas fa-arrow-right"></i>
+                </button>
+                }
+                @if (auth.hasPermission('manage_filings')) {
+                <button class="btn-icon" (click)="openEdit(f); $event.stopPropagation()" title="Edit"><i
+                    class="fas fa-edit"></i></button>
+                <button class="btn-icon" style="color: #ef4444;" (click)="deleteFiling(f.id, $event)" title="Delete"><i
+                    class="fas fa-trash"></i></button>
+                }
+              </div>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="8" style="padding: 32px;">
+              <app-empty-state icon="file-circle-xmark" title="No filings found" subtitle="No filings match your current filter or search criteria."></app-empty-state>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+
+  <!-- Pagination -->
+  <app-paginator [page]="currentPage()" [size]="pageSize" [total]="filtered.length" (change)="currentPage.set($event)"></app-paginator>
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  KANBAN VIEW                                              -->
+<!-- ══════════════════════════════════════════════════════════ -->
+@if (viewMode() === 'kanban') {
+<div class="filing-kanban">
+  @for (stage of kanbanStages(); track stage) {
+  <div class="kanban-column">
+    <div class="kanban-column-header">
+      <span class="kcol-dot" [class]="getKanbanCardClass(stage)"></span>
+      <h4>{{ stage }}</h4>
+      <span class="kanban-count">{{ getKanbanFilings(stage).length }}</span>
+    </div>
+    <div class="kanban-cards">
+      @for (f of getPaginatedKanbanFilings(stage); track f.id) {
+      <div class="kanban-card filing-kcard" (click)="openDrawer(f)">
+        @if (isTaskSubmission(f)) {
+        <span class="chip-task" style="font-size: 10px; margin-bottom: 6px; display: inline-block;"><i
+            class="fas fa-paperclip"></i> Task Submission</span>
+        }
+        <div class="kc-title">{{ displayTitle(f) }}</div>
+        <div class="kc-matter" style="margin-top: 4px;">{{ f.matterTitle || 'Unlinked' }}</div>
+        <div class="kc-footer" style="margin-top: 8px; border-top: 1px solid var(--bdr); padding-top: 6px;">
+          <span [class]="dueDateClass(f)" style="font-size: 11px; font-weight: 600;"><i class="far fa-calendar"></i> {{
+            f.dueDate }}</span>
+          <span style="font-size: 11px; color: var(--txt3);"><i class="far fa-user"></i> {{ f.advocate }}</span>
+        </div>
+        @if (f.stage !== 'Filed' && f.stage !== 'Returned' && f.stage !== 'Defects Raised') {
+        <button class="btn-xs"
+          style="width: 100%; margin-top: 8px; background: var(--g2); border: 1px solid var(--bdr); color: var(--txt3); font-size: 11px;"
+          (click)="moveToNextStage(f, $event)">
+          <i class="fas fa-arrow-right"></i> Move to Next Stage
+        </button>
+        }
+      </div>
+      } @empty {
+      <div class="kanban-empty">No filings</div>
+      }
+    </div>
+    @if (getKanbanFilings(stage).length > kanbanSize) {
+    <div class="kanban-footer">
+      <button class="kb-page-btn" [disabled]="getKanbanPage(stage) <= 1" (click)="setKanbanPage(stage, -1)">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <span class="kb-page-info">{{ getKanbanPage(stage) }} / {{ getKanbanTotalPages(stage) }}</span>
+      <button class="kb-page-btn" [disabled]="getKanbanPage(stage) >= getKanbanTotalPages(stage)" (click)="setKanbanPage(stage, 1)">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+    }
+  </div>
+  }
+</div>
+}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SIDE DRAWER                                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showDrawer() && drawerFiling(); as filing) {
+<div class="drawer-overlay" (click)="showDrawer.set(false)"></div>
+<div class="side-drawer" [class.open]="showDrawer()">
+  <div class="drawer-header">
+    <div>
+      <h3 style="font-size: 15px; font-weight: 800; color: var(--txt); margin: 0;">{{ displayTitle(filing) }}</h3>
+      <span class="badge" [class]="getStatusBadgeClass(filing.stage)" style="margin-top: 6px;">{{ filing.stage ||
+        'Draft' }}</span>
+      @if (isTaskSubmission(filing)) {
+      <span class="chip-task" style="margin-left: 6px;"><i class="fas fa-paperclip"></i> Task Submission</span>
+      }
+    </div>
+    <button class="modal-close" style="position: static;" (click)="showDrawer.set(false)"><i
+        class="fas fa-times"></i></button>
+  </div>
+  <div class="drawer-body">
+    <!-- Info Grid -->
+    <div class="drawer-info-grid">
+      <div><span class="lbl">Matter</span><span>{{ filing.matterTitle || '—' }}</span></div>
+      <div><span class="lbl">Court</span><span>{{ filing.court || '—' }}</span></div>
+      <div><span class="lbl">Filing Type</span><span>{{ filing.filingType || '—' }}</span></div>
+      <div><span class="lbl">Advocate</span><span>{{ filing.advocate || '—' }}</span></div>
+      <div>
+        <span class="lbl">Due Date</span>
+        <span [class]="dueDateClass(filing)" style="font-weight: 700;">{{ filing.dueDate || '—' }} @if
+          (dueDateLabel(filing)) { · {{ dueDateLabel(filing) }} }</span>
+      </div>
+      <div><span class="lbl">Filed Date</span><span>{{ filing.filedDate || '—' }}</span></div>
+    </div>
+
+    <!-- Stage Progress -->
+    <div class="drawer-section">
+      <h5 class="drawer-section-title"><i class="fas fa-timeline"></i> Stage Progress</h5>
+      <div class="stage-stepper-full">
+        @for (s of STAGE_ORDER(); track s; let i = $index) {
+        <div class="stepper-step" [class.active]="i <= getStepperIndex(filing.stage)"
+          [class.current]="s === filing.stage" (click)="setFilingStage(filing, s)" style="cursor: pointer;"
+          title="Set stage to {{ s }}">
+          <div class="stepper-circle"></div>
+          <div class="stepper-label">{{ s }}</div>
+        </div>
+        @if (i < STAGE_ORDER().length - 1) { <div class="stepper-connector"
+          [class.active]="i < getStepperIndex(filing.stage)">
+      </div>
+      }
+      }
+    </div>
+  </div>
+
+  <!-- Move Stage Panel -->
+  <div class="drawer-section">
+    <h5 class="drawer-section-title"><i class="fas fa-arrows-spin"></i> Move Stage</h5>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      @if (getNextStageName(filing); as nextStage) {
+      <button class="btn-outline"
+        style="border-color: var(--g2); color: var(--g1); font-weight: 700; height: 36px; padding: 0 16px; border-radius: 8px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;"
+        (click)="moveToNextStage(filing, $event)">
+        {{ nextStage }} →
+      </button>
+      }
+      @if (filing.stage !== 'Returned') {
+      <button class="btn-outline"
+        style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); height: 36px; padding: 0 16px; border-radius: 8px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;"
+        (click)="markReturned(filing, $event)">
+        Mark Returned
+      </button>
+      }
+      @if (filing.stage !== 'Defects Raised' && (filing.stage === 'Under Review' || filing.stage === 'Signed')) {
+      <button class="btn-outline"
+        style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); height: 36px; padding: 0 16px; border-radius: 8px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;"
+        (click)="defectFiling.set(filing); showDefectModal.set(true); showDrawer.set(false); $event.stopPropagation()">
+        Raise Defect
+      </button>
+      }
+    </div>
+  </div>
+
+  <!-- Attached Document -->
+  @if (drawerDocument(); as doc) {
+  <div class="drawer-section">
+    <h5 class="drawer-section-title"><i class="fas fa-file-pdf"></i> Attached Document</h5>
+    <div
+      style="display: flex; align-items: center; justify-content: space-between; background: var(--bgs); border: 1px solid var(--bdr); border-radius: 8px; padding: 10px 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-file-pdf" style="font-size: 18px; color: #ef4444;"></i>
+        <span style="font-weight: 700; font-size: 12.5px; color: var(--txt);">{{ doc.name }}</span>
+      </div>
+      <button class="btn-xs btn-primary" (click)="selectedDocForPreview.set(doc); showPreviewModal.set(true)">
+        <i class="fas fa-eye"></i> View File
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Notes -->
+  @if (filing.notes) {
+  <div class="drawer-section">
+    <h5 class="drawer-section-title"><i class="fas fa-sticky-note"></i> Notes</h5>
+    <p
+      style="font-size: 13px; color: var(--txt2); line-height: 1.6; margin: 0; white-space: pre-wrap; background: var(--input-bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--bdr);">
+      {{ filing.notes }}</p>
+  </div>
+  }
+</div>
+<div class="drawer-footer">
+  <div style="display: flex; gap: 8px;">
+    @if (auth.hasPermission('manage_filings')) {
+    <button class="btn-outline" style="color: #ef4444; border-color: #ef4444;"
+      (click)="deleteFiling(filing.id, $event)"><i class="fas fa-trash"></i> Delete</button>
+    @if (filing.stage !== 'Returned') {
+    <button class="btn-outline" style="color: #f59e0b; border-color: #f59e0b;" (click)="markReturned(filing, $event)"><i
+        class="fas fa-reply"></i> Mark Returned</button>
+    }
+    }
+  </div>
+  <div style="display: flex; gap: 8px;">
+    @if (filing.stage !== 'Filed' && filing.stage !== 'Returned') {
+    <button class="btn-outline" (click)="moveToNextStage(filing, $event)"><i class="fas fa-arrow-right"></i> Next
+      Stage</button>
+    }
+    <button class="btn-primary" (click)="openEdit(filing)"><i class="fas fa-edit"></i> Edit Details</button>
+  </div>
+</div>
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  CREATE FILING MODAL                                         -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showForm()) {
+<div class="modal-overlay" (click)="showForm.set(false)">
+  <div class="modal" style="max-width: 600px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-plus-circle"></i> Create New Filing</h3>
+      <button class="modal-close" (click)="showForm.set(false)"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      <div class="form-grid">
+        <div class="fg fg-full">
+          <label>Filing Title *</label>
+          <input type="text" [value]="form().title || ''" maxlength="200"
+            (input)="form.update(f => ({...f, title: $any($event.target).value}))"
+            placeholder="e.g. Rejoinder in WP/1234/2025">
+        </div>
+        <div class="fg">
+          <label>Document Type</label>
+          <select [value]="form().filingType || ''"
+            (change)="form.update(f => ({...f, filingType: $any($event.target).value}))">
+            @for (dt of docTypes(); track dt) { <option [value]="dt">{{ dt }}</option> }
+          </select>
+        </div>
+        <div class="fg">
+          <label>Linked Matter *</label>
+          <select [value]="form().matterId || ''" (change)="onMatterChange($event, 'create')">
+            <option value="">-- Select Matter --</option>
+            @for (m of mattersList(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+          </select>
+        </div>
+        <div class="fg">
+          <label>Court</label>
+          <select [value]="form().court || ''" (change)="form.update(f => ({...f, court: $any($event.target).value}))">
+            @for (c of courtsList(); track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        </div>
+        <div class="fg">
+          <label>Due Date</label>
+          <input type="date" [value]="form().dueDate || ''"
+            (change)="form.update(f => ({...f, dueDate: $any($event.target).value}))">
+        </div>
+        <div class="fg">
+          <label>Filing Stage</label>
+          <select [value]="form().stage || 'Draft'"
+            (change)="form.update(f => ({...f, stage: $any($event.target).value, status: $any($event.target).value}))">
+            @for (st of STAGE_ORDER(); track st) { <option [value]="st">{{ st }}</option> }
+          </select>
+        </div>
+        <div class="fg fg-full">
+          <label>Upload Document Copy (Directly goes to Matter vault if Filed)</label>
+          <input type="file" (change)="onFileSelected($event)"
+            style="border: 1.5px dashed var(--bdr2); padding: 12px; cursor: pointer; text-align: center; border-radius: 8px;">
+          <p style="font-size: 11px; color: var(--txt3); margin: 0 0 4px 0;">This file goes directly into the matter's
+            document folder if stage is set to "Filed".</p>
+        </div>
+        <div class="fg fg-full">
+          <label>Notes / Description</label>
+          <textarea rows="3" [value]="form().notes || ''" maxlength="1000"
+            (input)="form.update(f => ({...f, notes: $any($event.target).value}))"
+            placeholder="Brief description of the filing's purpose…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" (click)="showForm.set(false)">Cancel</button>
+      <button class="btn-primary" (click)="save()"><i class="fas fa-save"></i> Create Filing</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  EDIT FILING MODAL                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showEditModal()) {
+<div class="modal-overlay" (click)="showEditModal.set(false)">
+  <div class="modal" style="max-width: 600px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-edit"></i> Edit Filing</h3>
+      <button class="modal-close" (click)="showEditModal.set(false)"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      <div class="form-grid">
+        <div class="fg fg-full">
+          <label>Filing Title *</label>
+          <input type="text" [value]="editForm().title || ''" maxlength="200"
+            (input)="editForm.update(f => ({...f, title: $any($event.target).value}))">
+        </div>
+        <div class="fg">
+          <label>Document Type</label>
+          <select [value]="editForm().filingType || ''"
+            (change)="editForm.update(f => ({...f, filingType: $any($event.target).value}))">
+            @for (dt of docTypes(); track dt) { <option [value]="dt">{{ dt }}</option> }
+          </select>
+        </div>
+        <div class="fg">
+          <label>Linked Matter *</label>
+          <select [value]="editForm().matterId || ''" (change)="onMatterChange($event, 'edit')">
+            <option value="">-- Select Matter --</option>
+            @for (m of mattersList(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
+          </select>
+          @if (editForm().matterTitle) {
+          <div style="font-size: 11px; color: var(--g1); margin-top: 3px; font-weight: 600;">
+            <i class="fas fa-link"></i> Currently linked: {{ editForm().matterTitle }}
+          </div>
+          }
+        </div>
+        <div class="fg">
+          <label>Court</label>
+          <select [value]="editForm().court || ''"
+            (change)="editForm.update(f => ({...f, court: $any($event.target).value}))">
+            @for (c of courtsList(); track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        </div>
+        <div class="fg">
+          <label>Due Date</label>
+          <input type="date" [value]="editForm().dueDate || ''"
+            (change)="editForm.update(f => ({...f, dueDate: $any($event.target).value}))">
+        </div>
+        <div class="fg">
+          <label>Filing Stage</label>
+          <select [value]="editForm().stage || ''"
+            (change)="editForm.update(f => ({...f, stage: $any($event.target).value}))">
+            @for (s of filingStagesList(); track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </div>
+        @if (editForm().stage === 'Filed') {
+        <div class="fg">
+          <label>Filed Date</label>
+          <input type="date" [value]="editForm().filedDate || ''"
+            (change)="editForm.update(f => ({...f, filedDate: $any($event.target).value}))">
+        </div>
+        }
+        <div class="fg fg-full">
+          <label>Notes</label>
+          <textarea rows="3" [value]="editForm().notes || ''"
+            (input)="editForm.update(f => ({...f, notes: $any($event.target).value}))"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" (click)="showEditModal.set(false)">Cancel</button>
+      <button class="btn-primary" (click)="saveEdit()"><i class="fas fa-save"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  DEFECT DETAILS MODAL                                        -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+@if (showDefectModal()) {
+<div class="modal-overlay" (click)="showDefectModal.set(false)">
+  <div class="modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Raise Defect</h3>
+      <button class="modal-close" (click)="showDefectModal.set(false)"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg fg-full">
+          <label>Defect Description *</label>
+          <textarea rows="4" [value]="defectForm().description"
+            (input)="defectForm.update(f => ({...f, description: $any($event.target).value}))"
+            placeholder="Describe the defect raised by the registry…"></textarea>
+        </div>
+        <div class="fg fg-full">
+          <label>New Resubmission Deadline *</label>
+          <input type="date" [value]="defectForm().resubmissionDeadline"
+            (change)="defectForm.update(f => ({...f, resubmissionDeadline: $any($event.target).value}))">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" (click)="showDefectModal.set(false)">Cancel</button>
+      <button class="btn-primary" style="background: #ef4444; border-color: #ef4444;" (click)="saveDefect()"><i
+          class="fas fa-save"></i> Confirm Defect</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Document Quick Preview (Shared details panel) -->
+@if (showPreviewModal() && selectedDocForPreview(); as previewDoc) {
+<div class="modal-overlay" style="z-index: 1200;" (click)="showPreviewModal.set(false)">
+  <div class="modal" style="width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;"
+    (click)="$event.stopPropagation()">
+    <div class="modal-header" style="border-bottom: 1px solid var(--bdr); padding: 12px 20px; background: var(--bg2);">
+      <div>
+        <h3
+          style="font-size: 14.5px; font-weight: 800; color: var(--txt); margin: 0; display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i> {{ previewDoc.name }}
+        </h3>
+        <span class="badge b-g" style="margin-top: 4px;">{{ previewDoc.type || 'Court Document' }}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button class="btn-xs btn-outline" style="padding: 6px 12px; font-size: 11px;" onclick="window.print()">
+          <i class="fas fa-print"></i> Print
+        </button>
+        @if (getPreviewDetails(); as details) {
+        <a [href]="details.rawUrl || '#'" [attr.download]="details.name" target="_blank" class="btn-xs btn-primary"
+          style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"
+          [style.opacity]="details.rawUrl ? '1' : '0.5'" [style.pointer-events]="details.rawUrl ? 'auto' : 'none'">
+          <i class="fas fa-download"></i> Download
+        </a>
+        }
+        <button class="modal-close" style="position: static; margin-left: 10px;"
+          (click)="showPreviewModal.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+
+    <!-- PDF Reader Toolbar Simulation -->
+    <div
+      style="background: #334155; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid #1e293b;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i
+            class="fas fa-chevron-left"></i></button>
+        <span style="font-weight: 600;">Page 1 of 1</span>
+        <button style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i
+            class="fas fa-chevron-right"></i></button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i
+            class="fas fa-search-minus"></i></button>
+        <span style="font-family: monospace;">100%</span>
+        <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer;"><i
+            class="fas fa-search-plus"></i></button>
+        <button style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; margin-left: 10px;"><i
+            class="fas fa-expand"></i></button>
+      </div>
+      <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+        Source: {{ previewDoc.source || 'Secure Vault' }} | Verified
+      </div>
+    </div>
+
+    <div class="modal-body"
+      style="flex: 1; overflow-y: auto; background: #475569; padding: 24px; display: flex; flex-direction: column; align-items: center; min-height: 480px; gap: 20px;">
+      @if (getPreviewDetails(); as details) {
+      @if (details.isImage) {
+      @if (details.rawUrl) {
+      <img [src]="details.rawUrl"
+        style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;" />
+      } @else {
+      <div
+        style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+        <i class="fas fa-image" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+        <p style="margin: 0; font-weight: 700;">No preview available for this image.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+      </div>
+      }
+      } @else if (details.isPdf) {
+      @if (details.localUrl) {
+      <iframe [src]="details.localUrl"
+        style="width: 100%; height: 75vh; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border-radius: 4px;"></iframe>
+      } @else {
+      <div
+        style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+        <i class="fas fa-file-pdf" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+        <p style="margin: 0; font-weight: 700;">No preview available for this PDF.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+      </div>
+      }
+      } @else if (details.isTemplateInstance) {
+      <!-- Simulated A4 Legal Page with dynamic data -->
+      <div
+        style="width: 100%; max-width: 620px; min-height: 800px; background: #ffffff; padding: 48px 56px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; flex-direction: column; font-family: 'Times New Roman', Times, serif; color: #1e293b; position: relative; border-radius: 4px; box-sizing: border-box; text-align: left;">
+        <div
+          style="position: absolute; top: 40%; left: 15%; right: 15%; transform: rotate(-30deg); font-size: 48px; font-weight: 800; color: rgba(220, 38, 38, 0.06); text-transform: uppercase; text-align: center; border: 8px double rgba(220, 38, 38, 0.06); padding: 10px; pointer-events: none; font-family: sans-serif; letter-spacing: 2px;">
+          TUBA SmartCourt<br>Official Copy
+        </div>
+        <div style="text-align: center; border-bottom: 2px double #1e293b; padding-bottom: 12px; margin-bottom: 24px;">
+          <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">
+            Before the Honorable Court of Jurisdiction</h2>
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">At New Delhi,
+            India</span>
+        </div>
+        <div
+          style="font-size: 12.5px; line-height: 1.6; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; border-radius: 6px;">
+          <div>
+            <strong>PETITIONER / PLAINTIFF:</strong><br>
+            <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.clientName }}</span><br>
+            <span style="font-size: 10.5px; color: #64748b;">Represented by Lead Counsel</span>
+          </div>
+          <div
+            style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 10px;">
+            V / S</div>
+          <div>
+            <strong>RESPONDENT / DEFENDANT:</strong><br>
+            <span style="font-size: 13px; color: #0f172a; font-weight: 700;">{{ details.matterTitle }}</span><br>
+            <span style="font-size: 10.5px; color: #64748b;">Represented by Standing Counsel</span>
+          </div>
+        </div>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h3
+            style="font-size: 13px; font-weight: 800; text-decoration: underline; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">
+            SUBMISSIONS ON BEHALF OF THE PETITIONER: {{ details.name }}
+          </h3>
+        </div>
+        <div style="font-size: 13px; line-height: 1.8; flex: 1; text-align: justify; color: #334155;">
+          <p style="margin: 0 0 14px 0;"><strong>MOST RESPECTFULLY SHOWETH:</strong></p>
+          <p style="margin: 0 0 14px 0;">
+            1. That the present submissions are being filed in support of the petition challenging the arbitrary
+            guidelines and directives issued. The document, specifically identified as <strong>{{ details.name
+              }}</strong>, contains direct reference to input tax logs and verification certificates.
+          </p>
+          <p style="margin: 0 0 14px 0;">
+            2. That the file metadata records this as a <strong>{{ details.type || 'Affidavit / Submission' }}</strong>
+            document, filed on date <strong>{{ details.date || '2026-07-14' }}</strong> and processed under standard
+            digital encryption keys.
+          </p>
+          <p style="margin: 0 0 14px 0;">
+            3. That the uploader signature certificate belongs to <strong>Adv. Amit Sharma</strong>, who confirms that
+            the contents are scanned, OCR indexed, and validated against conflict records.
+          </p>
+          <p style="margin: 0 0 14px 0;">
+            4. That the Petitioners pray this Honorable Court may be pleased to take the document on record and grant
+            interim relief as requested in the application.
+          </p>
+        </div>
+        <div
+          style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; border-top: 1.5px solid #cbd5e1; padding-top: 16px;">
+          <div>
+            <div
+              style="border: 2.5px solid #dc2626; color: #dc2626; font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 6px 12px; border-radius: 6px; transform: rotate(-8deg); letter-spacing: 0.8px; font-family: sans-serif; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: rgba(220,38,38,0.02); text-align: center; line-height: 1.3;">
+              COURT RECORDS<br>
+              <span style="font-size: 8px; font-weight: 500;">DIGITALLY SECURED</span><br>
+              <span style="font-size: 8.5px; font-weight: 700;">ID: {{ details.id || 'VAULT-991' }}</span>
+            </div>
+          </div>
+          <div style="text-align: right; font-size: 12.5px; color: #0f172a; font-family: sans-serif; line-height: 1.5;">
+            <span
+              style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 15px; color: #475569; display: block; margin-bottom: 6px;">Amit
+              Sharma</span>
+            <strong>Advocate for Petitioner</strong><br>
+            <span style="font-size: 10.5px; color: #64748b;">Bar Council No: D/1049/2018</span>
+          </div>
+        </div>
+      </div>
+      } @else {
+      <div
+        style="color: white; text-align: center; padding: 48px; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; width: 80%; max-width: 480px; background: rgba(30,41,59,0.5);">
+        <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+        <p style="margin: 0; font-weight: 700;">No preview available for this document type.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0 0;">Please download the file to view.</p>
+      </div>
+      }
+      }
+    </div>
+  </div>
+</div>
+}
