@@ -489,10 +489,44 @@ export class DiaryPageComponent implements OnInit {
     return e.matterTitle || null;
   }
 
+  onMatterSelect(event: Event, isEdit = false) {
+    const target = event.target as HTMLSelectElement;
+    const val = target.value;
+    const matterId = val ? Number(val) : null;
+    const matter = matterId ? this.ds.matters().find(m => String(m.id) === String(matterId)) : null;
+    const matterTitle = matter ? matter.title : (val && target.selectedIndex >= 0 ? target.options[target.selectedIndex].text : '');
+
+    if (isEdit) {
+      this.editForm.update(f => ({
+        ...f,
+        matterId,
+        matterTitle,
+        clientId: matter ? matter.clientId : f.clientId,
+        clientName: matter ? matter.clientName : f.clientName,
+        court: (matter && matter.court) ? matter.court : (f.court || '')
+      }));
+    } else {
+      this.form.update(f => ({
+        ...f,
+        matterId,
+        matterTitle,
+        clientId: matter ? matter.clientId : f.clientId,
+        clientName: matter ? matter.clientName : f.clientName,
+        court: (matter && matter.court) ? matter.court : (f.court || '')
+      }));
+    }
+  }
+
   // CRUD
   save() {
     if (!this.form().title) return;
-    const payload = { ...this.form() };
+    const f = this.form();
+    const payload = {
+      ...f,
+      eventDate: f.date || f.eventDate || new Date().toISOString().split('T')[0],
+      eventTime: f.time || f.eventTime || '09:00',
+      matterId: f.matterId ? Number(f.matterId) : null
+    };
     this.ds.createDiaryEvent(payload).subscribe(() => {
       this.showForm.set(false);
       this.form.set({ type: 'hearing', urgent: false });
@@ -510,7 +544,14 @@ export class DiaryPageComponent implements OnInit {
   saveEdit() {
     const event = this.editingEvent();
     if (!event) return;
-    this.ds.updateDiaryEvent(event.id, this.editForm()).subscribe(() => {
+    const f = this.editForm();
+    const payload = {
+      ...f,
+      eventDate: f.date || f.eventDate,
+      eventTime: f.time || f.eventTime,
+      matterId: f.matterId ? Number(f.matterId) : null
+    };
+    this.ds.updateDiaryEvent(event.id, payload).subscribe(() => {
       this.showEditForm.set(false);
       this.editingEvent.set(null);
       this.loadEvents();
