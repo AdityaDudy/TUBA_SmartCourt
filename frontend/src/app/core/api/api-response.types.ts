@@ -216,9 +216,9 @@ export interface DiaryEventDto {
   time?:       string;
   eventTime?:  string;
   type:        'hearing' | 'meeting' | 'task' | 'deadline';
-  matterId?:   number | string;
+  matterId?:   number | string | null;
   matterTitle?: string;
-  clientId?:   number | string;
+  clientId?:   number | string | null;
   clientName?: string;
   ownerId?:    number;
   ownerName?:  string;
